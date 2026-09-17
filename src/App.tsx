@@ -3,9 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CheckCircle2, CircleAlert } from 'lucide-react'
 import { AppShell, type PageId } from './components/AppShell'
 import { HomePage } from './pages/HomePage'
-import { FinancePage } from './pages/FinancePage'
 import { BuildsPage } from './pages/BuildsPage'
 import { ComparePage } from './pages/ComparePage'
+import { RecordsPage } from './pages/RecordsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AddBuildModal } from './components/overlays/AddBuildModal'
 import { FinanceEditor } from './components/overlays/FinanceEditor'
@@ -39,7 +39,7 @@ export default function App() {
     const apply = () => {
       const mode = settings.theme === 'system' ? (query.matches ? 'dark' : 'light') : settings.theme
       document.documentElement.dataset.theme = mode
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#111719' : '#f4f6f8')
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#000000' : '#f5f5f7')
     }
     apply()
     query.addEventListener('change', apply)
@@ -48,15 +48,15 @@ export default function App() {
 
   const notify = (message: string, tone: 'success' | 'error' = 'success') => {
     setToast({ message, tone })
-    window.setTimeout(() => setToast(null), 3200)
+    window.setTimeout(() => setToast(null), 1800)
   }
 
   const pages: Record<PageId, React.ReactNode> = {
     home: <HomePage onAddBuild={() => setAddBuildOpen(true)} onEditFinance={() => setFinanceOpen(true)} onAddCountdown={() => setCountdownOpen(true)} onCompare={() => setActivePage('compare')} onOpenBuild={setSelectedBuild} />,
-    finance: <FinancePage onEdit={() => setFinanceOpen(true)} />,
     builds: <BuildsPage onAdd={() => setAddBuildOpen(true)} onOpen={setSelectedBuild} />,
     compare: <ComparePage notify={notify} />,
-    settings: <SettingsPage notify={notify} />,
+    records: <RecordsPage onOpenBuild={setSelectedBuild} />,
+    settings: <SettingsPage notify={notify} onEditFinance={() => setFinanceOpen(true)} />,
   }
 
   return (

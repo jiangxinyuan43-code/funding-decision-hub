@@ -1,13 +1,13 @@
-import { BarChart3, Home, Layers3, Settings, WalletCards, WifiOff } from 'lucide-react'
+import { BarChart3, Clock3, Home, Layers3, Settings, WifiOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-export type PageId = 'home' | 'finance' | 'builds' | 'compare' | 'settings'
+export type PageId = 'home' | 'builds' | 'compare' | 'records' | 'settings'
 
 const navigation = [
   { id: 'home' as const, label: '首页', icon: Home },
-  { id: 'finance' as const, label: '资金', icon: WalletCards },
   { id: 'builds' as const, label: '配置', icon: Layers3 },
   { id: 'compare' as const, label: '对比', icon: BarChart3 },
+  { id: 'records' as const, label: '记录', icon: Clock3 },
   { id: 'settings' as const, label: '我的', icon: Settings },
 ]
 
@@ -40,7 +40,11 @@ export function AppShell({ appName, activePage, online, children, onNavigate }: 
         <header className="mobile-header">
           <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
           <strong>{appName}</strong>
-          {!online && <WifiOff size={18} aria-label="当前离线" />}
+          {!online ? <WifiOff size={18} aria-label="当前离线" /> : (
+            <button className="header-action" type="button" onClick={() => onNavigate('settings')} aria-label="打开设置">
+              <Settings size={20} />
+            </button>
+          )}
         </header>
         {children}
       </div>

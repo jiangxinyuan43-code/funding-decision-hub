@@ -22,6 +22,7 @@ export function ComparePage({ notify }: { notify: (message: string, tone?: 'succ
   const localAnalysis = useMemo(() => compareBuildsLocally(selected), [selected])
   const displayAnalysis = analysis ?? localAnalysis
   const keys = Object.keys(componentLabels) as ComponentKey[]
+  const isUnknown = (value: string, confidence: number) => !value || confidence < 0.75 || /未明确|未知/.test(value)
 
   const toggle = (id: string) => {
     setAnalysis(null)
@@ -67,12 +68,35 @@ export function ComparePage({ notify }: { notify: (message: string, tone?: 'succ
           </section>
 
           <section className="section-block comparison-table-wrap">
-            <div className="section-heading"><div><p className="eyebrow">参数矩阵</p><h2>逐项核对</h2></div><span>横向滑动</span></div>
-            <div className="comparison-table-scroller">
+            <div className="section-heading"><div><p className="eyebrow">参数对比</p><h2>逐项核对</h2></div><span>{selected.length} 个方案</span></div>
+            <div className="comparison-mobile">
+              <article className="comparison-group comparison-group--price">
+                <h3>价格</h3>
+                {selected.map((build) => <div key={build.id}><span>{build.title}</span><strong>{currency.format(build.price)}</strong></div>)}
+              </article>
+              {keys.map((key) => {
+                const values = selected.map((build) => build.components[key].value || '未明确')
+                const differs = new Set(values).size > 1
+                return (
+                  <article className={differs ? 'comparison-group has-difference' : 'comparison-group'} key={key}>
+                    <h3>{componentLabels[key]}{differs && <small>有差异</small>}</h3>
+                    {selected.map((build) => {
+                      const field = build.components[key]
+                      return <div className={isUnknown(field.value, field.confidence) ? 'is-unknown' : ''} key={build.id}><span>{build.title}</span><strong>{field.value || '未明确'}</strong>{isUnknown(field.value, field.confidence) && <small>待确认</small>}</div>
+                    })}
+                  </article>
+                )
+              })}
+              <article className="comparison-group">
+                <h3>完整度</h3>
+                {selected.map((build) => <div key={build.id}><span>{build.title}</span><strong>{build.completeness}%</strong></div>)}
+              </article>
+            </div>
+            <div className="comparison-table-scroller desktop-comparison">
               <table className="comparison-table">
                 <thead><tr><th>项目</th>{selected.map((build) => <th key={build.id}><span>{build.title}</span><strong>{currency.format(build.price)}</strong></th>)}</tr></thead>
                 <tbody>
-                  {keys.map((key) => <tr key={key}><th>{componentLabels[key]}</th>{selected.map((build) => { const field = build.components[key]; return <td className={!field.value || field.confidence < 0.75 || /未明确|未知/.test(field.value) ? 'is-unknown' : ''} key={build.id}>{field.value || '未明确'}{field.confidence < 0.75 && <small>待确认</small>}</td> })}</tr>)}
+                  {keys.map((key) => <tr key={key}><th>{componentLabels[key]}</th>{selected.map((build) => { const field = build.components[key]; return <td className={isUnknown(field.value, field.confidence) ? 'is-unknown' : ''} key={build.id}>{field.value || '未明确'}{isUnknown(field.value, field.confidence) && <small>待确认</small>}</td> })}</tr>)}
                   <tr><th>完整度</th>{selected.map((build) => <td key={build.id}>{build.completeness}%</td>)}</tr>
                   <tr><th>店铺</th>{selected.map((build) => <td key={build.id}>{build.store || '未填写'}</td>)}</tr>
                 </tbody>

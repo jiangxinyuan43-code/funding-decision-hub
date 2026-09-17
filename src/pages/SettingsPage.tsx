@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Database, Download, Eye, EyeOff, KeyRound, Moon, ShieldCheck, Smartphone, Sun, Upload } from 'lucide-react'
+import { Check, ChevronRight, Database, Download, Eye, EyeOff, KeyRound, Moon, ShieldCheck, Smartphone, Sun, Upload, WalletCards } from 'lucide-react'
 import { db, exportAllData, importAllData } from '../services/storage/db'
 import type { ThemeMode, UserSettings } from '../types/models'
 
-export function SettingsPage({ notify }: { notify: (message: string, tone?: 'success' | 'error') => void }) {
+export function SettingsPage({ notify, onEditFinance }: { notify: (message: string, tone?: 'success' | 'error') => void; onEditFinance: () => void }) {
   const stored = useLiveQuery(() => db.settings.get('primary'))
   const [draft, setDraft] = useState<UserSettings | null>(null)
   const [showKey, setShowKey] = useState(false)
@@ -39,6 +39,14 @@ export function SettingsPage({ notify }: { notify: (message: string, tone?: 'suc
   return (
     <main className="page settings-page">
       <header className="page-heading"><div><p className="eyebrow">我的</p><h1>本地数据与 AI</h1></div><ShieldCheck size={24} /></header>
+
+      <section className="settings-link-section" aria-label="资金设置">
+        <button type="button" onClick={onEditFinance}>
+          <span className="settings-link-icon"><WalletCards size={21} /></span>
+          <span><strong>资金计划</strong><small>余额、收支、目标预算与购买目标</small></span>
+          <ChevronRight size={19} />
+        </button>
+      </section>
 
       <section className="section-block settings-section">
         <div className="section-heading"><div><p className="eyebrow">AI Provider</p><h2>OpenAI-compatible 接口</h2></div><KeyRound size={20} /></div>
