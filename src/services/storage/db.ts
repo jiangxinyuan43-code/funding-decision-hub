@@ -68,11 +68,13 @@ export async function exportAllData() {
     })),
   )
 
+  const portableSettings = settings.map((setting) => ({ ...setting, apiKey: '' }))
+
   return JSON.stringify(
     {
       version: 1,
       exportedAt: new Date().toISOString(),
-      data: { settings, financePlans, countdowns, goals, builds: portableBuilds },
+      data: { settings: portableSettings, financePlans, countdowns, goals, builds: portableBuilds },
     },
     null,
     2,
@@ -102,7 +104,10 @@ export async function importAllData(raw: string) {
   )
 
   await db.transaction('rw', db.settings, db.financePlans, db.countdowns, db.goals, db.builds, async () => {
-    if (parsed.data?.settings?.length) await db.settings.bulkPut(parsed.data.settings)
+    if (parsed.data?.settings?.length) {
+      const currentSettings = await db.settings.get('primary')
+      await db.settings.bulkPut(parsed.data.settings.map((setting) => ({ ...setting, apiKey: currentSettings?.apiKey ?? '' })))
+    }
     if (parsed.data?.financePlans?.length) await db.financePlans.bulkPut(parsed.data.financePlans)
     if (parsed.data?.countdowns?.length) await db.countdowns.bulkPut(parsed.data.countdowns)
     if (parsed.data?.goals?.length) await db.goals.bulkPut(parsed.data.goals)

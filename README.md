@@ -64,7 +64,7 @@ IndexedDB 数据库名：`funding-decision-hub`
 - `goals`
 - `builds`（包含截图 Blob、价格历史、配置快照和检查清单）
 
-“我的 > 导出全部数据”会生成包含原图 Data URL 的 JSON 备份。导入采用合并更新，不会清空现有数据。
+“我的 > 导出全部数据”会生成包含原图 Data URL 的 JSON 备份，但不会导出 API Key。导入采用合并更新，不会清空现有数据，也不会覆盖当前设备保存的 API Key。
 
 ## 已知边界
 
