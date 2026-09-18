@@ -23,7 +23,7 @@ export function compareBuildsLocally(builds: PCBuild[]): ComparisonAnalysis {
   return {
     coreDifferences: differences,
     risks,
-    priceNotes: [`${prices[0].title}价格最低，比${prices.at(-1)?.title}少 ¥${(prices.at(-1)?.price ?? 0) - prices[0].price}`],
+    priceNotes: [`${prices[0].title}价格最低，比${prices[prices.length - 1]?.title}少 ¥${(prices[prices.length - 1]?.price ?? 0) - prices[0].price}`],
     usageNotes: ['游戏优先看 GPU 与帧时间', '本地 AI 优先看 GPU 显存', '后续升级重点确认主板、电源和机箱兼容性'],
     unknowns,
   }

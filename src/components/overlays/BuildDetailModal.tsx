@@ -18,11 +18,34 @@ interface Props {
 
 const statusLabels: Record<BuildStatus, string> = { pending: '待分析', watching: '观察中', candidate: '候选', priority: '重点候选', rejected: '已淘汰', purchased: '已购买' }
 
+function cloneBuild(build: PCBuild): PCBuild {
+  return {
+    ...build,
+    tags: [...build.tags],
+    components: Object.fromEntries(Object.entries(build.components).map(([key, field]) => [key, { ...field }])) as PCBuild['components'],
+    images: build.images.map((image) => ({ ...image })),
+    priceHistory: build.priceHistory.map((point) => ({ ...point })),
+    snapshots: build.snapshots.map((snapshot) => ({
+      ...snapshot,
+      components: Object.fromEntries(Object.entries(snapshot.components).map(([key, field]) => [key, { ...field }])) as PCBuild['components'],
+      imageIds: [...snapshot.imageIds],
+    })),
+    analysis: build.analysis ? {
+      ...build.analysis,
+      advantages: [...build.analysis.advantages],
+      risks: [...build.analysis.risks],
+      unknowns: [...build.analysis.unknowns],
+      upgradeConsiderations: [...build.analysis.upgradeConsiderations],
+    } : undefined,
+    checklist: build.checklist.map((item) => ({ ...item })),
+  }
+}
+
 export function BuildDetailModal({ build, onClose, notify }: Props) {
   const [draft, setDraft] = useState<PCBuild | null>(build)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => {
-    setDraft(build ? structuredClone(build) : null)
+    setDraft(build ? cloneBuild(build) : null)
     setConfirmingDelete(false)
   }, [build])
   if (!draft) return null

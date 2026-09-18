@@ -43,8 +43,12 @@ export default function App() {
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#000000' : '#f5f5f7')
     }
     apply()
-    query.addEventListener('change', apply)
-    return () => query.removeEventListener('change', apply)
+    if (typeof query.addEventListener === 'function') query.addEventListener('change', apply)
+    else query.addListener(apply)
+    return () => {
+      if (typeof query.removeEventListener === 'function') query.removeEventListener('change', apply)
+      else query.removeListener(apply)
+    }
   }, [settings])
 
   const notify = (message: string, tone: 'success' | 'error' = 'success') => {

@@ -40,6 +40,8 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   private async send(payload: Record<string, unknown>) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 90_000)
     try {
       return await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -48,11 +50,13 @@ export class OpenAICompatibleProvider implements AIProvider {
           Authorization: `Bearer ${this.settings.apiKey}`,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(90_000),
+        signal: controller.signal,
       })
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'TimeoutError') throw new Error('AI 请求超时，请稍后重试')
+      if (error instanceof DOMException && error.name === 'AbortError') throw new Error('AI 请求超时，请稍后重试')
       throw new Error('无法连接 AI 服务，请检查 Base URL、网络或浏览器 CORS 设置')
+    } finally {
+      window.clearTimeout(timeout)
     }
   }
 

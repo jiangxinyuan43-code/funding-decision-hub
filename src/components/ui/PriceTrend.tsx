@@ -15,7 +15,7 @@ export function PriceTrend({ points }: { points: PricePoint[] }) {
     y: padding + ((max - point.price) / range) * (height - padding * 2),
   }))
   const line = coords.map((point) => `${point.x},${point.y}`).join(' ')
-  const latest = points.at(-1)!
+  const latest = points[points.length - 1]!
   const delta = latest.price - points[0].price
 
   return (

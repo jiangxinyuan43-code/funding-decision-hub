@@ -8,8 +8,11 @@ OUTPUT = ROOT / "test-results"
 OUTPUT.mkdir(exist_ok=True)
 
 
-def run_viewport(browser, name: str, width: int, height: int) -> None:
-    context = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=1)
+def run_viewport(browser, name: str, width: int, height: int, context_options=None) -> None:
+    options = {"viewport": {"width": width, "height": height}, "device_scale_factor": 1}
+    if context_options:
+        options.update(context_options)
+    context = browser.new_context(**options)
     page = context.new_page()
     errors: list[str] = []
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
@@ -100,4 +103,10 @@ with sync_playwright() as playwright:
     run_viewport(chromium, "desktop", 1440, 1000)
     chromium.close()
 
-print("Browser smoke passed: CRUD, reset persistence, mobile 320-414px, desktop 1440px")
+    iphone = dict(playwright.devices["iPhone 13"])
+    iphone.pop("default_browser_type", None)
+    webkit = playwright.webkit.launch(headless=True)
+    run_viewport(webkit, "webkit-iphone", 390, 844, iphone)
+    webkit.close()
+
+print("Browser smoke passed: CRUD, reset persistence, Chromium 320-1440px, WebKit iPhone")

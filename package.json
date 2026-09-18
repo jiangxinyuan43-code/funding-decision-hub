@@ -1,16 +1,17 @@
 {
   "name": "funding-decision-hub",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "build:github": "tsc -b && vite build --mode github",
+    "build:github": "tsc -b && vite build --mode github && npm run verify:dist",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run test && npm run build"
+    "verify": "npm run test && npm run build",
+    "verify:dist": "node scripts/verify-dist.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.11",
@@ -23,12 +24,13 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
+    "@types/node": "^26.6.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^25.0.1",
     "typescript": "~5.7.2",
     "vite": "^6.0.5",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.11"
   }
 }

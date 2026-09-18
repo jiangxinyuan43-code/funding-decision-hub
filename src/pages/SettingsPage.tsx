@@ -163,7 +163,7 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
         </div>
       </section>
 
-      <section className="about-panel"><div className="brand-mark" aria-hidden="true"><span /><span /><span /></div><div><strong>{draft.appName}</strong><p>V1.1 · 本地优先的个人决策工作台</p></div></section>
+      <section className="about-panel"><div className="brand-mark" aria-hidden="true"><span /><span /><span /></div><div><strong>{draft.appName}</strong><p>V1.1.1 · 本地优先的个人决策工作台</p></div></section>
     </main>
   )
 }

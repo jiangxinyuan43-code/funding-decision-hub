@@ -24,7 +24,7 @@ export function CountdownEditor({ open, onClose, notify }: Props) {
   }, [open])
   const set = <K extends keyof Countdown>(key: K, value: Countdown[K]) => setDraft((current) => ({ ...current, [key]: value }))
   const startNew = () => { setDraft(emptyCountdown()); setIsEditing(false); setConfirmingDelete(null) }
-  const edit = (countdown: Countdown) => { setDraft(structuredClone(countdown)); setIsEditing(true); setConfirmingDelete(null) }
+  const edit = (countdown: Countdown) => { setDraft({ ...countdown }); setIsEditing(true); setConfirmingDelete(null) }
   const save = async () => {
     if (!draft.name.trim() || !draft.targetDate) return notify('请填写倒数日名称和日期', 'error')
     await db.countdowns.put({ ...draft, name: draft.name.trim(), note: draft.note.trim() })

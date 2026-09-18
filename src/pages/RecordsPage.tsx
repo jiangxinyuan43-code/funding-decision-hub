@@ -13,7 +13,7 @@ export function RecordsPage({ onOpenBuild }: { onOpenBuild: (build: PCBuild) => 
   const [view, setView] = useState<RecordsView>('price')
   const pricedBuilds = builds.filter((build) => build.priceHistory.length > 0)
   const totalRecords = builds.reduce((total, build) => total + build.priceHistory.length, 0)
-  const falling = builds.filter((build) => build.priceHistory.length > 1 && build.priceHistory.at(-1)!.price < build.priceHistory[0].price).length
+  const falling = builds.filter((build) => build.priceHistory.length > 1 && build.priceHistory[build.priceHistory.length - 1]!.price < build.priceHistory[0].price).length
 
   return (
     <main className="page records-page">
