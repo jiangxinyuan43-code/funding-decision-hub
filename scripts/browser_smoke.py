@@ -68,8 +68,10 @@ def run_viewport(browser, name: str, width: int, height: int, context_options=No
     page.get_by_role("button", name="关闭").click()
 
     page.get_by_role("button", name="对比", exact=True).click()
-    page.get_by_role("heading", name="完整对比报告").wait_for()
-    page.get_by_role("heading", name="每个方案的风险与待确认项").wait_for()
+    page.get_by_role("heading", name="购机决策报告").wait_for()
+    page.get_by_label("最终推荐").get_by_text("首选", exact=True).wait_for()
+    page.get_by_role("heading", name="下单前逐台核验").wait_for()
+    page.get_by_role("heading", name="先看影响结论的部件").wait_for()
     page.locator(".comparison-table" if width >= 900 else ".comparison-mobile").wait_for()
     page.screenshot(path=str(OUTPUT / f"compare-{name}.png"), full_page=True)
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} compare page has horizontal overflow"

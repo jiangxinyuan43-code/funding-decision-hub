@@ -139,6 +139,41 @@ export interface ComparisonAnalysis {
   usageNotes: string[]
   unknowns: string[]
   source?: 'local' | 'hybrid'
+  report?: ComparisonReport
+}
+
+export type ComparisonDimension = 'performance' | 'value' | 'compatibility' | 'upgrade' | 'thermals' | 'afterSales'
+
+export interface ComparisonWeight {
+  key: ComparisonDimension
+  label: string
+  weight: number
+  reason: string
+}
+
+export interface ComparisonRanking {
+  buildId: string
+  title: string
+  shortTitle: string
+  rank: number
+  total: number
+  recommendation: '首选' | '次选' | '不建议' | '可考虑'
+  scores: Record<ComparisonDimension, number>
+  headline: string
+}
+
+export interface ComparisonReport {
+  assumption: string
+  weights: ComparisonWeight[]
+  rankings: ComparisonRanking[]
+  winner: string
+  runnerUp: string
+  avoid: string
+  coreReason: string
+  experience: string[]
+  valueNotes: string[]
+  priceFreshness: string
+  finalSentence: string
 }
 
 export const componentLabels: Record<ComponentKey, string> = {
