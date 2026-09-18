@@ -94,6 +94,7 @@ export interface FinancialPlan {
   monthlyFixedExpense: number
   monthlySaving: number
   extraIncome: number
+  extraIncomeDate?: string
   housingFund: number
   targetBudget: number
   targetDate: string

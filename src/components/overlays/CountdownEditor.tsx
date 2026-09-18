@@ -15,7 +15,7 @@ export function CountdownEditor({ open, onClose, notify }: Props) {
   const set = <K extends keyof Countdown>(key: K, value: Countdown[K]) => setDraft((current) => ({ ...current, [key]: value }))
   const save = async () => {
     if (!draft.name.trim() || !draft.targetDate) return notify('请填写倒数日名称和日期', 'error')
-    await db.countdowns.put(draft)
+    await db.countdowns.put({ ...draft, name: draft.name.trim(), note: draft.note.trim() })
     notify('倒数日已添加')
     onClose()
   }

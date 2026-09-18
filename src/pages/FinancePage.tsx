@@ -41,7 +41,7 @@ export function FinancePage({ onEdit }: { onEdit: () => void }) {
             </div>
           ))}
         </div>
-        <div className="chart-footnote">计算口径：当前资金 + 收入 + 储蓄 + 公积金 + 额外收入 - 固定支出</div>
+        <div className="chart-footnote">计算口径：当前资金 + 指定日期的一次性存入 + 后续每月（工资中实际存下 + 公积金提取）</div>
       </section>
 
       <section className="section-block">
@@ -60,10 +60,10 @@ export function FinancePage({ onEdit }: { onEdit: () => void }) {
       <section className="section-block">
         <div className="section-heading"><div><p className="eyebrow">每月流入流出</p><h2>计划构成</h2></div><CircleDollarSign size={20} /></div>
         <dl className="money-ledger">
-          <div><dt>每月工资</dt><dd>+ {currency.format(plan.monthlyIncome)}</dd></div>
-          <div><dt>固定储蓄</dt><dd>+ {currency.format(plan.monthlySaving)}</dd></div>
+          <div><dt>每月工资（参考）</dt><dd>{currency.format(plan.monthlyIncome)}</dd></div>
+          <div><dt>工资中实际存下</dt><dd>+ {currency.format(plan.monthlySaving)}</dd></div>
           <div><dt>公积金预计提取</dt><dd>+ {currency.format(plan.housingFund)}</dd></div>
-          <div><dt>固定支出</dt><dd className="text-risk">- {currency.format(plan.monthlyFixedExpense)}</dd></div>
+          <div><dt>固定消耗（参考）</dt><dd>{currency.format(plan.monthlyFixedExpense)}</dd></div>
           <div className="money-ledger__total"><dt>每月净增加</dt><dd>{currency.format(monthlyNet(plan))}</dd></div>
         </dl>
       </section>

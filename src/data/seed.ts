@@ -30,13 +30,14 @@ export const defaultSettings: UserSettings = {
 export const defaultFinance: FinancialPlan = {
   id: 'primary',
   currentBalance: 10_000,
-  monthlyIncome: 4_956,
+  monthlyIncome: 5_426,
   monthlyFixedExpense: 2_000,
-  monthlySaving: 2_000,
-  extraIncome: 1_000,
+  monthlySaving: 1_500,
+  extraIncome: 4_000,
+  extraIncomeDate: '2026-09-30',
   housingFund: 1_500,
   targetBudget: 17_000,
-  targetDate: '2026-11-01',
+  targetDate: '2026-11-11',
   updatedAt: new Date().toISOString(),
 }
 

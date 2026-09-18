@@ -23,6 +23,12 @@ class FundingDatabase extends Dexie {
 
 export const db = new FundingDatabase()
 
+function currentMonthEndDate() {
+  const now = new Date()
+  const date = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 export async function initializeDatabase() {
   await db.transaction('rw', db.settings, db.financePlans, db.countdowns, db.goals, db.builds, async () => {
     if ((await db.settings.count()) === 0) await db.settings.add(defaultSettings)
@@ -30,6 +36,8 @@ export async function initializeDatabase() {
     if ((await db.countdowns.count()) === 0) await db.countdowns.bulkAdd(defaultCountdowns)
     if ((await db.goals.count()) === 0) await db.goals.bulkAdd(defaultGoals)
     if ((await db.builds.count()) === 0) await db.builds.bulkAdd(defaultBuilds)
+    const finance = await db.financePlans.get('primary')
+    if (finance && !finance.extraIncomeDate) await db.financePlans.update('primary', { extraIncomeDate: currentMonthEndDate() })
   })
 }
 
@@ -108,7 +116,9 @@ export async function importAllData(raw: string) {
       const currentSettings = await db.settings.get('primary')
       await db.settings.bulkPut(parsed.data.settings.map((setting) => ({ ...setting, apiKey: currentSettings?.apiKey ?? '' })))
     }
-    if (parsed.data?.financePlans?.length) await db.financePlans.bulkPut(parsed.data.financePlans)
+    if (parsed.data?.financePlans?.length) {
+      await db.financePlans.bulkPut(parsed.data.financePlans.map((plan) => ({ ...plan, extraIncomeDate: plan.extraIncomeDate ?? currentMonthEndDate() })))
+    }
     if (parsed.data?.countdowns?.length) await db.countdowns.bulkPut(parsed.data.countdowns)
     if (parsed.data?.goals?.length) await db.goals.bulkPut(parsed.data.goals)
     if (builds.length) await db.builds.bulkPut(builds)

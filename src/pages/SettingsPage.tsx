@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ChevronRight, Database, Download, Eye, EyeOff, KeyRound, Moon, ShieldCheck, Smartphone, Sun, Upload, WalletCards } from 'lucide-react'
+import { Check, ChevronRight, Database, Download, Eye, EyeOff, KeyRound, LoaderCircle, Moon, PlugZap, ShieldCheck, Smartphone, Sun, Upload, WalletCards } from 'lucide-react'
 import { db, exportAllData, importAllData } from '../services/storage/db'
+import { createAIProvider } from '../services/ai/client'
 import type { ThemeMode, UserSettings } from '../types/models'
 
 export function SettingsPage({ notify, onEditFinance }: { notify: (message: string, tone?: 'success' | 'error') => void; onEditFinance: () => void }) {
   const stored = useLiveQuery(() => db.settings.get('primary'))
   const [draft, setDraft] = useState<UserSettings | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [testingVision, setTestingVision] = useState(false)
+  const [aiTestResult, setAiTestResult] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
   const importInput = useRef<HTMLInputElement>(null)
   const counts = useLiveQuery(async () => ({ builds: await db.builds.count(), goals: await db.goals.count(), countdowns: await db.countdowns.count() }), [])
 
@@ -16,6 +20,36 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
 
   const set = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => setDraft((current) => current ? { ...current, [key]: value } : current)
   const save = async () => { await db.settings.put(draft); notify('设置已保存') }
+  const testConnection = async () => {
+    setTestingConnection(true)
+    try {
+      await createAIProvider(draft).testConnection()
+      const message = `连接成功，${draft.model} 可以正常响应`
+      setAiTestResult({ message, tone: 'success' })
+      notify(message)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '连接测试失败'
+      setAiTestResult({ message, tone: 'error' })
+      notify(message, 'error')
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+  const testVision = async () => {
+    setTestingVision(true)
+    try {
+      await createAIProvider(draft).testVision()
+      const message = `图片识别正常，${draft.visionModel || draft.model} 已提取测试配置`
+      setAiTestResult({ message, tone: 'success' })
+      notify(message)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '图片能力测试失败'
+      setAiTestResult({ message, tone: 'error' })
+      notify(message, 'error')
+    } finally {
+      setTestingVision(false)
+    }
+  }
   const download = async () => {
     const content = await exportAllData()
     const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }))
@@ -58,7 +92,13 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
           <label><span>文本模型</span><input value={draft.model} onChange={(event) => set('model', event.target.value)} /></label>
           <label><span>视觉模型</span><input value={draft.visionModel} onChange={(event) => set('visionModel', event.target.value)} /></label>
         </div>
-        <button className="primary-button" type="button" onClick={save}><Check size={18} /> 保存 AI 设置</button>
+        <p className="fine-print">连接测试会使用当前填写的文本模型发送一次最小请求；图片识别仍要求视觉模型支持图片输入。</p>
+        <div className="settings-ai-actions">
+          <button className="secondary-button" type="button" onClick={testConnection} disabled={testingConnection}>{testingConnection ? <LoaderCircle className="spin" size={18} /> : <PlugZap size={18} />}{testingConnection ? '测试中' : '测试连接'}</button>
+          <button className="secondary-button" type="button" onClick={testVision} disabled={testingVision}>{testingVision ? <LoaderCircle className="spin" size={18} /> : <Eye size={18} />}{testingVision ? '识别中' : '测试图片识别'}</button>
+          <button className="primary-button settings-ai-actions__save" type="button" onClick={save}><Check size={18} /> 保存 AI 设置</button>
+        </div>
+        {aiTestResult && <p className={`ai-test-result ai-test-result--${aiTestResult.tone}`} role="status">{aiTestResult.message}</p>}
       </section>
 
       <section className="section-block settings-section">

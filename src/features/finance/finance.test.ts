@@ -5,10 +5,11 @@ import type { FinancialPlan, PurchaseGoal } from '../../types/models'
 const plan: FinancialPlan = {
   id: 'primary',
   currentBalance: 10_000,
-  monthlyIncome: 4_956,
+  monthlyIncome: 5_426,
   monthlyFixedExpense: 2_000,
-  monthlySaving: 2_000,
-  extraIncome: 1_000,
+  monthlySaving: 1_500,
+  extraIncome: 4_000,
+  extraIncomeDate: '2026-09-30',
   housingFund: 1_500,
   targetBudget: 17_000,
   targetDate: '2026-11-11',
@@ -23,17 +24,22 @@ const goals: PurchaseGoal[] = [
 
 describe('finance forecast', () => {
   it('calculates monthly net contribution', () => {
-    expect(monthlyNet(plan)).toBe(6_456)
+    expect(monthlyNet(plan)).toBe(3_000)
   })
 
-  it('includes one-time income and full months through target month', () => {
+  it('includes the current month deposit and only later month-end contributions before the target', () => {
     const now = new Date('2026-09-17T08:00:00+08:00')
-    expect(forecastBalance(plan, now)).toBe(23_912)
+    expect(forecastBalance(plan, now)).toBe(17_000)
     expect(buildForecast(plan, now)).toHaveLength(3)
+  })
+
+  it('does not count a dated one-time deposit again after it has passed', () => {
+    const now = new Date('2026-10-01T08:00:00+08:00')
+    expect(forecastBalance({ ...plan, currentBalance: 14_000 }, now)).toBe(17_000)
   })
 
   it('uses only active goals in the shared funding pool', () => {
     expect(activeGoalTotal(goals)).toBe(17_100)
-    expect(goalGap(plan, goals, new Date('2026-09-17T08:00:00+08:00'))).toBe(6_812)
+    expect(goalGap(plan, goals, new Date('2026-09-17T08:00:00+08:00'))).toBe(-100)
   })
 })

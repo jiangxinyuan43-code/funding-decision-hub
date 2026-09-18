@@ -29,6 +29,7 @@ export function HomePage({ onAddBuild, onEditFinance, onAddCountdown, onCompare,
   const ratio = planTotal ? (forecast / planTotal) * 100 : 0
   const primaryCountdown = countdowns[0]
   const days = primaryCountdown ? daysUntil(primaryCountdown.targetDate) : 999
+  const secondaryCountdowns = countdowns.slice(1, 3)
   const priorityBuilds = builds.filter((build) => build.favorite).slice(0, 3)
   const budgetRows = goals.filter((goal) => goal.active).slice(0, 3)
 
@@ -81,6 +82,19 @@ export function HomePage({ onAddBuild, onEditFinance, onAddCountdown, onCompare,
             <div className="countdown-card__number">{days >= 0 ? days : `+${Math.abs(days)}`}<small>天</small></div>
             <div className="countdown-card__date">{formatDate(primaryCountdown.targetDate)} · {primaryCountdown.targetTime}</div>
             <p>{primaryCountdown.note || dateLabel(days)}</p>
+            {secondaryCountdowns.length > 0 && (
+              <div className="countdown-card__list" aria-label="倒数日列表">
+                {secondaryCountdowns.map((countdown) => {
+                  const remaining = daysUntil(countdown.targetDate)
+                  return (
+                    <div key={countdown.id}>
+                      <span><strong>{countdown.name}</strong><small>{formatDate(countdown.targetDate)} · {countdown.targetTime}</small></span>
+                      <b>{remaining >= 0 ? remaining : `+${Math.abs(remaining)}`}<small>天</small></b>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         ) : (
           <button className="countdown-card__empty" type="button" onClick={onAddCountdown}>添加重要日期</button>

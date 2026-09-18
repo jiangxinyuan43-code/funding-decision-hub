@@ -20,6 +20,12 @@ def run_viewport(browser, name: str, width: int, height: int) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} has horizontal page overflow"
     page.screenshot(path=str(OUTPUT / f"home-{name}.png"), full_page=True)
 
+    page.get_by_role("button", name="添加倒数日").click()
+    page.get_by_label("名称").fill("同步测试")
+    page.get_by_label("目标日期").fill("2026-10-15")
+    page.get_by_role("button", name="添加节点").click()
+    page.get_by_label("倒数日列表").get_by_text("同步测试", exact=True).wait_for()
+
     page.get_by_role("button", name="添加配置", exact=True).first.click()
     page.get_by_role("dialog").wait_for()
     page.get_by_text("截图、链接和价格先保存").wait_for()
