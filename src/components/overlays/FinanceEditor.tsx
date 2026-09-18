@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, Save } from 'lucide-react'
+import { Plus, Save, Trash2 } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { db } from '../../services/storage/db'
 import type { FinancialPlan, PurchaseGoal } from '../../types/models'
@@ -29,10 +29,14 @@ export function FinanceEditor({ open, onClose, notify }: Props) {
   const number = (key: keyof FinancialPlan, value: string) => setPlan({ ...plan, [key]: Math.max(0, Number(value) || 0) })
   const updateGoal = (id: string, patch: Partial<PurchaseGoal>) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, ...patch } : goal))
   const addGoal = () => setGoals((items) => [...items, { id: createId('goal'), name: '新购买目标', category: '其他', budget: 0, targetDate: plan.targetDate, active: true }])
+  const removeGoal = (id: string) => setGoals((items) => items.filter((goal) => goal.id !== id))
   const save = async () => {
     await db.transaction('rw', db.financePlans, db.goals, async () => {
       await db.financePlans.put({ ...plan, updatedAt: new Date().toISOString() })
-      await db.goals.bulkPut(goals)
+      const keptIds = new Set(goals.map((goal) => goal.id))
+      const removedIds = storedGoals.filter((goal) => !keptIds.has(goal.id)).map((goal) => goal.id)
+      if (removedIds.length) await db.goals.bulkDelete(removedIds)
+      if (goals.length) await db.goals.bulkPut(goals.map((goal) => ({ ...goal, name: goal.name.trim() || '未命名目标', targetDate: plan.targetDate })))
     })
     notify('资金计划已更新')
     onClose()
@@ -65,8 +69,10 @@ export function FinanceEditor({ open, onClose, notify }: Props) {
             <input aria-label="目标名称" value={goal.name} onChange={(event) => updateGoal(goal.id, { name: event.target.value })} />
             <select aria-label="目标分类" value={goal.category} onChange={(event) => updateGoal(goal.id, { category: event.target.value as PurchaseGoal['category'] })}><option>电脑</option><option>手机</option><option>显示器</option><option>其他</option></select>
             <div className="money-input"><i>¥</i><input aria-label="目标预算" type="number" value={goal.budget} onChange={(event) => updateGoal(goal.id, { budget: Math.max(0, Number(event.target.value) || 0) })} /></div>
+            <button className="goal-delete-button" type="button" onClick={() => removeGoal(goal.id)} aria-label={`移除 ${goal.name}`} title="移除目标"><Trash2 size={17} /></button>
           </div>
         ))}
+        {!goals.length && <div className="empty-inline"><span>当前没有购买目标，可按“新目标”添加。</span></div>}
       </div>
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>取消</button><button className="primary-button" type="button" onClick={save}><Save size={18} /> 保存计划</button></div>
     </Modal>

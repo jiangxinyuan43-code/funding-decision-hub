@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from playwright.sync_api import sync_playwright
 
 
@@ -20,19 +21,41 @@ def run_viewport(browser, name: str, width: int, height: int) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} has horizontal page overflow"
     page.screenshot(path=str(OUTPUT / f"home-{name}.png"), full_page=True)
 
-    page.get_by_role("button", name="添加倒数日").click()
-    page.get_by_label("名称").fill("同步测试")
-    page.get_by_label("目标日期").fill("2026-10-15")
-    page.get_by_role("button", name="添加节点").click()
+    page.get_by_role("button", name="管理倒数日").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("名称").fill("同步测试")
+    dialog.get_by_label("目标日期").fill("2026-10-15")
+    dialog.get_by_role("button", name="添加节点").click()
+    dialog.get_by_text("同步测试", exact=True).wait_for()
+    dialog.get_by_role("button", name="完成").click()
     page.get_by_label("倒数日列表").get_by_text("同步测试", exact=True).wait_for()
-
-    page.get_by_role("button", name="添加配置", exact=True).first.click()
-    page.get_by_role("dialog").wait_for()
-    page.get_by_text("截图、链接和价格先保存").wait_for()
-    page.get_by_role("button", name="关闭").click()
 
     page.get_by_role("button", name="配置", exact=True).click()
     page.get_by_role("heading", name="收藏的整机方案").wait_for()
+    page.get_by_role("button", name="添加整机方案").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("商品名称").fill("删除闭环测试")
+    dialog.get_by_label("当前价格").fill("9999")
+    dialog.get_by_label("商品链接").fill("javascript:alert(1)")
+    dialog.get_by_role("button", name="保存方案").click()
+    assert dialog.is_visible(), "invalid product URL must not be saved"
+    dialog.get_by_label("商品链接").fill("item.example.com/test")
+    dialog.get_by_role("button", name="保存方案").click()
+    test_build = page.get_by_role("button", name=re.compile("删除闭环测试"))
+    test_build.wait_for()
+
+    test_build.click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("当前价格").fill("9799")
+    dialog.get_by_role("button", name="保存修改").click()
+    page.get_by_role("button", name=re.compile("删除闭环测试")).click()
+    dialog = page.get_by_role("dialog")
+    assert dialog.get_by_label("当前价格").input_value() == "9799"
+    dialog.get_by_role("button", name="删除这条配置").click()
+    dialog.get_by_role("button", name="确认删除").click()
+    dialog.wait_for(state="detached")
+    assert page.get_by_role("button", name=re.compile("删除闭环测试")).count() == 0
+
     page.locator(".build-card").first.click()
     page.get_by_role("dialog").wait_for()
     page.get_by_text("购买前", exact=True).wait_for()
@@ -40,9 +63,31 @@ def run_viewport(browser, name: str, width: int, height: int) -> None:
 
     page.get_by_role("button", name="对比", exact=True).click()
     page.get_by_role("heading", name="差异先于结论").wait_for()
-    page.locator(".comparison-mobile, .comparison-table").first.wait_for()
+    page.locator(".comparison-table" if width >= 900 else ".comparison-mobile").wait_for()
     page.screenshot(path=str(OUTPUT / f"compare-{name}.png"), full_page=True)
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} compare page has horizontal overflow"
+
+    page.get_by_role("button", name="我的", exact=True).click()
+    page.get_by_role("heading", name="本地数据与 AI").wait_for()
+    api_key_input = page.locator('input[type="password"]')
+    api_key_input.fill("browser-test-key")
+    page.get_by_role("button", name="保存 AI 设置").click()
+    page.get_by_text("AI 设置已保存", exact=True).wait_for()
+    page.get_by_role("button", name="移除当前 API Key").click()
+    page.get_by_role("button", name="确认移除").click()
+    page.get_by_text("API Key 已从当前浏览器移除", exact=True).wait_for()
+    assert api_key_input.input_value() == ""
+
+    page.get_by_role("button", name="清空本地业务数据").click()
+    page.get_by_label("输入“清空”确认").fill("清空")
+    page.get_by_role("button", name="清空数据").click()
+    page.get_by_text("资金、配置、目标和倒数日已清空", exact=True).wait_for()
+    page.get_by_role("button", name="配置", exact=True).click()
+    page.get_by_role("heading", name="没有匹配的方案").wait_for()
+    page.reload(wait_until="networkidle")
+    page.get_by_role("button", name="配置", exact=True).click()
+    page.get_by_role("heading", name="没有匹配的方案").wait_for()
+    assert page.locator(".build-card").count() == 0
 
     assert not errors, f"{name} console errors: {errors}"
     context.close()
@@ -55,4 +100,4 @@ with sync_playwright() as playwright:
     run_viewport(chromium, "desktop", 1440, 1000)
     chromium.close()
 
-print("Browser smoke passed: mobile 390x844, desktop 1440x1000")
+print("Browser smoke passed: CRUD, reset persistence, mobile 320-414px, desktop 1440px")

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ChevronRight, Database, Download, Eye, EyeOff, KeyRound, LoaderCircle, Moon, PlugZap, ShieldCheck, Smartphone, Sun, Upload, WalletCards } from 'lucide-react'
-import { db, exportAllData, importAllData } from '../services/storage/db'
+import { AlertTriangle, Check, ChevronRight, Database, Download, Eye, EyeOff, KeyRound, LoaderCircle, Moon, PlugZap, ShieldCheck, Smartphone, Sun, Trash2, Upload, WalletCards } from 'lucide-react'
+import { clearUserData, db, exportAllData, importAllData } from '../services/storage/db'
 import { createAIProvider } from '../services/ai/client'
 import type { ThemeMode, UserSettings } from '../types/models'
 
@@ -12,6 +12,9 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
   const [testingConnection, setTestingConnection] = useState(false)
   const [testingVision, setTestingVision] = useState(false)
   const [aiTestResult, setAiTestResult] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
+  const [confirmingKeyRemoval, setConfirmingKeyRemoval] = useState(false)
+  const [showReset, setShowReset] = useState(false)
+  const [resetPhrase, setResetPhrase] = useState('')
   const importInput = useRef<HTMLInputElement>(null)
   const counts = useLiveQuery(async () => ({ builds: await db.builds.count(), goals: await db.goals.count(), countdowns: await db.countdowns.count() }), [])
 
@@ -19,7 +22,19 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
   if (!draft) return <main className="page"><div className="skeleton skeleton-card" /></main>
 
   const set = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => setDraft((current) => current ? { ...current, [key]: value } : current)
-  const save = async () => { await db.settings.put(draft); notify('设置已保存') }
+  const save = async () => {
+    const next = { ...draft, apiBaseUrl: draft.apiBaseUrl.trim(), model: draft.model.trim(), visionModel: draft.visionModel.trim() }
+    await db.settings.put(next)
+    setDraft(next)
+    notify('AI 设置已保存')
+  }
+  const removeApiKey = async () => {
+    await db.settings.update('primary', { apiKey: '' })
+    setDraft((current) => current ? { ...current, apiKey: '' } : current)
+    setAiTestResult(null)
+    setConfirmingKeyRemoval(false)
+    notify('API Key 已从当前浏览器移除')
+  }
   const testConnection = async () => {
     setTestingConnection(true)
     try {
@@ -62,8 +77,23 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
   }
   const importFile = async (file?: File) => {
     if (!file) return
-    try { await importAllData(await file.text()); notify('数据导入完成') } catch (error) { notify(error instanceof Error ? error.message : '导入失败', 'error') }
+    if (file.size > 100 * 1024 * 1024) {
+      notify('备份文件超过 100MB，请检查文件是否正确', 'error')
+      if (importInput.current) importInput.current.value = ''
+      return
+    }
+    try {
+      const result = await importAllData(await file.text())
+      notify(`导入完成：${result.builds} 个配置、${result.goals} 个目标、${result.countdowns} 个倒数日`)
+    } catch (error) { notify(error instanceof Error ? error.message : '导入失败', 'error') }
     if (importInput.current) importInput.current.value = ''
+  }
+  const resetData = async () => {
+    if (resetPhrase !== '清空') return notify('请输入“清空”后再继续', 'error')
+    await clearUserData()
+    setShowReset(false)
+    setResetPhrase('')
+    notify('资金、配置、目标和倒数日已清空')
   }
 
   const themes: Array<{ value: ThemeMode; label: string; icon: typeof Sun }> = [
@@ -99,6 +129,13 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
           <button className="primary-button settings-ai-actions__save" type="button" onClick={save}><Check size={18} /> 保存 AI 设置</button>
         </div>
         {aiTestResult && <p className={`ai-test-result ai-test-result--${aiTestResult.tone}`} role="status">{aiTestResult.message}</p>}
+        <div className="settings-subaction">
+          {!confirmingKeyRemoval ? (
+            <button className="danger-text-button" type="button" onClick={() => setConfirmingKeyRemoval(true)} disabled={!draft.apiKey}><Trash2 size={16} /> 移除当前 API Key</button>
+          ) : (
+            <div className="inline-confirmation" role="alert"><span>只移除当前浏览器保存的密钥，模型名称会保留。</span><button type="button" onClick={() => setConfirmingKeyRemoval(false)}>取消</button><button type="button" onClick={removeApiKey}>确认移除</button></div>
+          )}
+        </div>
       </section>
 
       <section className="section-block settings-section">
@@ -112,9 +149,21 @@ export function SettingsPage({ notify, onEditFinance }: { notify: (message: stri
         <div className="button-row"><button className="secondary-button" type="button" onClick={download}><Download size={18} /> 导出全部数据</button><button className="secondary-button" type="button" onClick={() => importInput.current?.click()}><Upload size={18} /> 导入 JSON</button></div>
         <input ref={importInput} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => importFile(event.target.files?.[0])} />
         <p className="fine-print">导入采用合并更新，不会自动删除现有配置或价格历史。</p>
+        <div className="data-danger-zone">
+          {!showReset ? (
+            <button className="danger-text-button" type="button" onClick={() => setShowReset(true)}><Trash2 size={17} /> 清空本地业务数据</button>
+          ) : (
+            <div className="reset-confirmation" role="alert">
+              <AlertTriangle size={20} />
+              <div><strong>这会清空资金、配置、目标和倒数日</strong><p>AI 设置会保留。建议先导出备份；操作无法撤销。</p></div>
+              <label><span>输入“清空”确认</span><input value={resetPhrase} onChange={(event) => setResetPhrase(event.target.value)} placeholder="清空" autoComplete="off" /></label>
+              <div><button className="secondary-button" type="button" onClick={() => { setShowReset(false); setResetPhrase('') }}>取消</button><button className="danger-button" type="button" onClick={resetData} disabled={resetPhrase !== '清空'}><Trash2 size={17} /> 清空数据</button></div>
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="about-panel"><div className="brand-mark" aria-hidden="true"><span /><span /><span /></div><div><strong>{draft.appName}</strong><p>V1.0 · 本地优先的个人决策工作台</p></div></section>
+      <section className="about-panel"><div className="brand-mark" aria-hidden="true"><span /><span /><span /></div><div><strong>{draft.appName}</strong><p>V1.1 · 本地优先的个人决策工作台</p></div></section>
     </main>
   )
 }

@@ -663,6 +663,60 @@ input, select, textarea { min-height: 48px; border-radius: var(--radius-md); }
 .toast { background: var(--color-primary); color: var(--color-background); border-radius: var(--radius-md); animation: toast-in 180ms ease both; }
 .toast--error { background: var(--color-danger); color: var(--white); }
 
+.editor-mode-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-3); margin-bottom: var(--spacing-5); }
+.editor-mode-heading > div { min-width: 0; display: grid; gap: var(--spacing-1); }
+.editor-mode-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.managed-list { display: grid; gap: var(--spacing-2); }
+.managed-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-md); background: var(--color-surface); }
+.managed-row.is-active { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.managed-row__main { min-width: 0; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-3); padding: var(--spacing-2) var(--spacing-3); text-align: left; border: 0; background: transparent; cursor: pointer; }
+.managed-row__main > span { min-width: 0; display: grid; gap: var(--spacing-1); }
+.managed-row__main strong, .managed-row__main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.managed-row__main small { color: var(--color-secondary); font-size: 12px; }
+.managed-row__main > svg { flex: none; color: var(--color-tertiary); }
+.managed-row__delete { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--color-danger); cursor: pointer; }
+.managed-row__confirm { grid-column: 1 / -1; min-height: 48px; display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing-2); padding: var(--spacing-2) var(--spacing-3); border-top: 1px solid var(--color-divider); background: var(--color-danger-soft); }
+.managed-row__confirm span { margin-right: auto; font-size: 13px; font-weight: 600; }
+.managed-row__confirm button { min-height: 36px; padding: 0 var(--spacing-3); border: 0; background: transparent; color: var(--color-secondary); border-radius: var(--radius-sm); cursor: pointer; }
+.managed-row__confirm button:last-child { background: var(--color-danger); color: var(--white); }
+
+.goal-editor-row { grid-template-columns: 30px minmax(0, 1fr) 44px; align-items: center; }
+.goal-editor-row .check-control { grid-column: 1; grid-row: 1; }
+.goal-editor-row > input { grid-column: 2; grid-row: 1; }
+.goal-editor-row select, .goal-editor-row .money-input { grid-column: 2 / 4; }
+.goal-delete-button { grid-column: 3; grid-row: 1; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--color-danger); border-radius: var(--radius-sm); cursor: pointer; }
+
+.empty-inline { display: flex; align-items: center; justify-content: center; gap: var(--spacing-2); color: var(--color-secondary); }
+.build-basics { margin-top: var(--spacing-4); }
+.danger-zone { margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-divider); }
+.danger-text-button { min-height: 44px; display: inline-flex; align-items: center; gap: var(--spacing-2); padding: 0; border: 0; background: transparent; color: var(--color-danger); font-weight: 600; cursor: pointer; }
+.danger-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-2); padding: 0 var(--spacing-4); border: 1px solid var(--color-danger); background: var(--color-danger); color: var(--white); border-radius: var(--radius-md); font-weight: 600; cursor: pointer; }
+.danger-button:disabled { cursor: not-allowed; opacity: .5; }
+.delete-confirmation { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-2); padding: var(--spacing-4); background: var(--color-danger-soft); border-radius: var(--radius-md); }
+.delete-confirmation > div { grid-column: 1 / -1; }
+.delete-confirmation p { margin-top: var(--spacing-1); font-size: 13px; }
+.settings-subaction, .data-danger-zone { margin-top: var(--spacing-4); padding-top: var(--spacing-3); border-top: 1px solid var(--color-divider); }
+.inline-confirmation { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-2); padding: var(--spacing-3); background: var(--color-danger-soft); border-radius: var(--radius-md); }
+.inline-confirmation span { flex: 1 1 220px; font-size: 13px; }
+.inline-confirmation button { min-height: 36px; padding: 0 var(--spacing-3); border: 0; background: transparent; color: var(--color-secondary); border-radius: var(--radius-sm); cursor: pointer; }
+.inline-confirmation button:last-child { background: var(--color-danger); color: var(--white); }
+.reset-confirmation { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--spacing-3); padding: var(--spacing-4); background: var(--color-danger-soft); border-radius: var(--radius-md); }
+.reset-confirmation > svg { color: var(--color-danger); }
+.reset-confirmation p { margin-top: var(--spacing-1); font-size: 13px; }
+.reset-confirmation label, .reset-confirmation > div:last-child { grid-column: 1 / -1; }
+.reset-confirmation label { display: grid; gap: var(--spacing-2); color: var(--color-secondary); font-size: 13px; }
+.reset-confirmation > div:last-child { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-2); }
+.modal-panel:focus { outline: none; }
+
+@media (min-width: 560px) {
+  .goal-editor-row { grid-template-columns: 30px minmax(180px, 1fr) 120px 140px 44px; }
+  .goal-editor-row select { grid-column: 3; grid-row: 1; }
+  .goal-editor-row .money-input { grid-column: 4; grid-row: 1; }
+  .goal-delete-button { grid-column: 5; }
+  .delete-confirmation { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+  .delete-confirmation > div { grid-column: auto; }
+}
+
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes page-enter { from { opacity: 0; transform: translateY(5px); } }
 @keyframes sheet-up { from { transform: translateY(20px); opacity: .7; } }

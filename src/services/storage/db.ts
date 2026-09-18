@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Countdown, FinancialPlan, PCBuild, PurchaseGoal, UserSettings } from '../../types/models'
 import { defaultBuilds, defaultCountdowns, defaultFinance, defaultGoals, defaultSettings } from '../../data/seed'
+import { parseBackupV1 } from './backup'
 
 class FundingDatabase extends Dexie {
   settings!: EntityTable<UserSettings, 'id'>
@@ -31,11 +32,13 @@ function currentMonthEndDate() {
 
 export async function initializeDatabase() {
   await db.transaction('rw', db.settings, db.financePlans, db.countdowns, db.goals, db.builds, async () => {
-    if ((await db.settings.count()) === 0) await db.settings.add(defaultSettings)
+    const counts = await Promise.all([db.settings.count(), db.financePlans.count(), db.countdowns.count(), db.goals.count(), db.builds.count()])
+    const isFirstLaunch = counts.every((count) => count === 0)
+    if (counts[0] === 0) await db.settings.add(defaultSettings)
     if ((await db.financePlans.count()) === 0) await db.financePlans.add(defaultFinance)
-    if ((await db.countdowns.count()) === 0) await db.countdowns.bulkAdd(defaultCountdowns)
-    if ((await db.goals.count()) === 0) await db.goals.bulkAdd(defaultGoals)
-    if ((await db.builds.count()) === 0) await db.builds.bulkAdd(defaultBuilds)
+    if (isFirstLaunch && (await db.countdowns.count()) === 0) await db.countdowns.bulkAdd(defaultCountdowns)
+    if (isFirstLaunch && (await db.goals.count()) === 0) await db.goals.bulkAdd(defaultGoals)
+    if (isFirstLaunch && (await db.builds.count()) === 0) await db.builds.bulkAdd(defaultBuilds)
     const finance = await db.financePlans.get('primary')
     if (finance && !finance.extraIncomeDate) await db.financePlans.update('primary', { extraIncomeDate: currentMonthEndDate() })
   })
@@ -52,7 +55,10 @@ async function blobToDataUrl(blob: Blob) {
 
 async function dataUrlToBlob(dataUrl: string) {
   const response = await fetch(dataUrl)
-  return response.blob()
+  const blob = await response.blob()
+  if (!blob.type.startsWith('image/')) throw new Error('备份中的图片格式无效')
+  if (blob.size > 20 * 1024 * 1024) throw new Error('备份中的单张图片超过 20MB')
+  return blob
 }
 
 export async function exportAllData() {
@@ -90,17 +96,7 @@ export async function exportAllData() {
 }
 
 export async function importAllData(raw: string) {
-  const parsed = JSON.parse(raw) as {
-    version?: number
-    data?: {
-      settings?: UserSettings[]
-      financePlans?: FinancialPlan[]
-      countdowns?: Countdown[]
-      goals?: PurchaseGoal[]
-      builds?: Array<Omit<PCBuild, 'images'> & { images: Array<Omit<PCBuild['images'][number], 'original'> & { original: string }> }>
-    }
-  }
-  if (parsed.version !== 1 || !parsed.data) throw new Error('备份文件版本不受支持')
+  const parsed = parseBackupV1(raw)
 
   const builds = await Promise.all(
     (parsed.data.builds ?? []).map(async (build) => ({
@@ -122,5 +118,33 @@ export async function importAllData(raw: string) {
     if (parsed.data?.countdowns?.length) await db.countdowns.bulkPut(parsed.data.countdowns)
     if (parsed.data?.goals?.length) await db.goals.bulkPut(parsed.data.goals)
     if (builds.length) await db.builds.bulkPut(builds)
+  })
+
+  return {
+    builds: builds.length,
+    countdowns: parsed.data.countdowns?.length ?? 0,
+    goals: parsed.data.goals?.length ?? 0,
+  }
+}
+
+export async function clearUserData() {
+  const now = new Date().toISOString()
+  const today = new Date()
+  const targetYear = today > new Date(today.getFullYear(), 10, 11, 23, 59, 59) ? today.getFullYear() + 1 : today.getFullYear()
+  await db.transaction('rw', db.financePlans, db.countdowns, db.goals, db.builds, async () => {
+    await Promise.all([db.countdowns.clear(), db.goals.clear(), db.builds.clear()])
+    await db.financePlans.put({
+      ...defaultFinance,
+      currentBalance: 0,
+      monthlyIncome: 0,
+      monthlyFixedExpense: 0,
+      monthlySaving: 0,
+      extraIncome: 0,
+      housingFund: 0,
+      targetBudget: 0,
+      extraIncomeDate: currentMonthEndDate(),
+      targetDate: `${targetYear}-11-11`,
+      updatedAt: now,
+    })
   })
 }

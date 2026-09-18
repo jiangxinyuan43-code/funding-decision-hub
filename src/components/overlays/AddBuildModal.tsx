@@ -8,6 +8,7 @@ import { createAIProvider } from '../../services/ai/client'
 import { buildTags, calculateCompleteness, findLikelyDuplicate, normalizeComponents } from '../../features/pc-build/hardware'
 import { componentLabels, emptyComponents, type BuildAnalysis, type BuildComponents, type ComponentKey, type PCBuild, type Platform, type StoredImage } from '../../types/models'
 import { createId } from '../../utils/ids'
+import { normalizeHttpUrl } from '../../utils/url'
 
 interface Props { open: boolean; onClose: () => void; notify: (message: string, tone?: 'success' | 'error') => void }
 
@@ -66,11 +67,17 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
   }
 
   const save = async () => {
+    let productUrl = ''
+    try {
+      productUrl = normalizeHttpUrl(url)
+    } catch (error) {
+      return notify(error instanceof Error ? error.message : '商品链接格式不正确', 'error')
+    }
     const normalized = normalizeComponents(components)
     const now = new Date().toISOString()
     const resolvedTitle = title.trim() || [normalized.cpu.value, normalized.gpu.value].filter(Boolean).join(' + ') || '未命名整机方案'
     const candidate: PCBuild = {
-      id: createId('build'), title: resolvedTitle, platform, store: store.trim(), url: url.trim(), price: Math.max(0, price),
+      id: createId('build'), title: resolvedTitle, platform, store: store.trim(), url: productUrl, price: Math.max(0, price),
       status: Object.values(normalized).some((field) => field.value) ? 'watching' : 'pending', favorite: false,
       tags: buildTags(normalized, price), completeness: calculateCompleteness(normalized), components: normalized, images,
       priceHistory: price > 0 ? [{ id: createId('price'), price, recordedAt: now }] : [], snapshots: [], analysis, checklist: checklist(), note, createdAt: now, updatedAt: now,
@@ -83,7 +90,7 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
         title: resolvedTitle || duplicate.title,
         platform,
         store: store || duplicate.store,
-        url: url || duplicate.url,
+        url: productUrl || duplicate.url,
         price: price || duplicate.price,
         components: normalized,
         completeness: candidate.completeness,

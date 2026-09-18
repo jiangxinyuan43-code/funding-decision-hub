@@ -75,7 +75,7 @@ export function HomePage({ onAddBuild, onEditFinance, onAddCountdown, onCompare,
       <section className="countdown-card" aria-label="双十一倒计时">
         <div className="countdown-card__topline">
           <span><CalendarDays size={18} /> {primaryCountdown?.name ?? '双十一'}</span>
-          <button type="button" onClick={onAddCountdown} aria-label="添加倒数日"><CalendarPlus size={18} /></button>
+          <button type="button" onClick={onAddCountdown} aria-label="管理倒数日" title="管理倒数日"><CalendarPlus size={18} /></button>
         </div>
         {primaryCountdown ? (
           <>

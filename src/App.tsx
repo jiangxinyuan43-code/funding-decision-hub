@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CheckCircle2, CircleAlert } from 'lucide-react'
 import { AppShell, type PageId } from './components/AppShell'
@@ -25,6 +25,7 @@ export default function App() {
   const [selectedBuild, setSelectedBuild] = useState<PCBuild | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [online, setOnline] = useState(navigator.onLine)
+  const toastTimer = useRef<number | null>(null)
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)
@@ -47,9 +48,12 @@ export default function App() {
   }, [settings])
 
   const notify = (message: string, tone: 'success' | 'error' = 'success') => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
     setToast({ message, tone })
-    window.setTimeout(() => setToast(null), 1800)
+    toastTimer.current = window.setTimeout(() => { setToast(null); toastTimer.current = null }, 2200)
   }
+
+  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current) }, [])
 
   const pages: Record<PageId, React.ReactNode> = {
     home: <HomePage onAddBuild={() => setAddBuildOpen(true)} onEditFinance={() => setFinanceOpen(true)} onAddCountdown={() => setCountdownOpen(true)} onCompare={() => setActivePage('compare')} onOpenBuild={setSelectedBuild} />,

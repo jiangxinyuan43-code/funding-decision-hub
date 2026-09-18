@@ -1,4 +1,4 @@
-const CACHE = 'funding-decision-hub-v1'
+const CACHE = 'funding-decision-hub-v1.1'
 const BASE = new URL(self.registration.scope).pathname
 const SHELL = [BASE, `${BASE}index.html`, `${BASE}manifest.webmanifest`, `${BASE}app-icon.svg`]
 
