@@ -43,4 +43,15 @@ describe('complete local comparison report', () => {
     expect(report.risks[defaultBuilds[0].title]).toContain('AI 补充风险')
     expect(report.priceNotes).toEqual(baseline.priceNotes)
   })
+
+  it('keeps the names assigned by the full configuration library', () => {
+    const builds = buildsWithMissingField()
+    const names = { [builds[0].id]: '方案D', [builds[1].id]: '方案E' }
+
+    const report = compareBuildsLocally(builds, names).report
+
+    expect(report?.rankings.map((item) => item.shortTitle).sort()).toEqual(['方案D', '方案E'])
+    expect([report?.winner, report?.runnerUp].sort()).toEqual(['方案D', '方案E'])
+    expect(report?.avoid).toBe('暂无')
+  })
 })

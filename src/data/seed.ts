@@ -77,6 +77,7 @@ const now = new Date().toISOString()
 export const defaultBuilds: PCBuild[] = [
   {
     id: 'build_9800x3d_5070',
+    schemeName: '方案A',
     title: '9800X3D + RTX 5070 主推方案',
     platform: '京东',
     store: '品牌自营整机店',
@@ -121,6 +122,7 @@ export const defaultBuilds: PCBuild[] = [
   },
   {
     id: 'build_7800x3d_5060ti',
+    schemeName: '方案B',
     title: '7800X3D + RTX 5060 Ti 控预算方案',
     platform: '天猫',
     store: 'DIY 装机旗舰店',

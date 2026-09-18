@@ -48,6 +48,7 @@ const snapshotSchema = z.object({
 
 const buildSchema = z.object({
   id,
+  schemeName: z.string().max(32).optional(),
   title: shortText,
   platform: z.enum(['京东', '淘宝', '天猫', '抖音', '其他']),
   store: shortText,

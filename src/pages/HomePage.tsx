@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, CalendarDays, CalendarPlus, PencilLine, Plus } from 'lucide-react'
 import { db } from '../services/storage/db'
 import { activeGoalTotal, forecastBalance, goalGap } from '../features/finance/finance'
+import { buildSchemeNameMap } from '../features/pc-build/buildNames'
 import { currency, dateLabel, daysUntil, formatDate } from '../utils/format'
 import type { PCBuild } from '../types/models'
 
@@ -21,6 +22,7 @@ export function HomePage({ onAddBuild, onEditFinance, onAddCountdown, onCompare,
     return items.sort((left, right) => Number(right.pinned) - Number(left.pinned) || left.targetDate.localeCompare(right.targetDate))
   }, []) ?? []
   const builds = useLiveQuery(() => db.builds.orderBy('updatedAt').reverse().toArray(), []) ?? []
+  const schemeNames = buildSchemeNameMap(builds)
   if (!finance) return <PageSkeleton />
 
   const forecast = forecastBalance(finance)
@@ -125,8 +127,8 @@ export function HomePage({ onAddBuild, onEditFinance, onAddCountdown, onCompare,
               <div className="home-favorite-card__icon">{build.components.gpu.value.match(/\d{4}/)?.[0] ?? 'PC'}</div>
               <div className="home-favorite-card__copy">
                 <span>{build.platform} · {build.store || '店铺待补充'}</span>
-                <strong>{build.title}</strong>
-                <small>{build.components.cpu.value.replace('AMD Ryzen 7 ', '')} · {build.components.gpu.value.replace('NVIDIA GeForce ', '')}</small>
+                <strong>{schemeNames[build.id]}</strong>
+                <small>{build.title}</small>
               </div>
               <div className="home-favorite-card__price"><strong>{currency.format(build.price)}</strong><span>{build.completeness}% 完整</span><ArrowRight size={16} /></div>
             </button>

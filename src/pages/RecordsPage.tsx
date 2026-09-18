@@ -5,12 +5,14 @@ import { db } from '../services/storage/db'
 import { PriceTrend } from '../components/ui/PriceTrend'
 import { currency, formatDate } from '../utils/format'
 import type { PCBuild } from '../types/models'
+import { buildSchemeNameMap } from '../features/pc-build/buildNames'
 
 type RecordsView = 'price' | 'activity'
 
 export function RecordsPage({ onOpenBuild }: { onOpenBuild: (build: PCBuild) => void }) {
   const builds = useLiveQuery(() => db.builds.orderBy('updatedAt').reverse().toArray(), []) ?? []
   const [view, setView] = useState<RecordsView>('price')
+  const schemeNames = buildSchemeNameMap(builds)
   const pricedBuilds = builds.filter((build) => build.priceHistory.length > 0)
   const totalRecords = builds.reduce((total, build) => total + build.priceHistory.length, 0)
   const falling = builds.filter((build) => build.priceHistory.length > 1 && build.priceHistory[build.priceHistory.length - 1]!.price < build.priceHistory[0].price).length
@@ -41,7 +43,7 @@ export function RecordsPage({ onOpenBuild }: { onOpenBuild: (build: PCBuild) => 
             return (
               <article className="price-record" key={build.id}>
                 <button className="price-record__header" type="button" onClick={() => onOpenBuild(build)}>
-                  <div><span>{build.platform} · {build.store || '店铺待补充'}</span><strong>{build.title}</strong></div>
+                  <div><span>{build.platform} · {build.store || '店铺待补充'} · {build.title}</span><strong>{schemeNames[build.id]}</strong></div>
                   <ChevronRight size={19} />
                 </button>
                 <div className="price-record__stats">
@@ -60,7 +62,7 @@ export function RecordsPage({ onOpenBuild }: { onOpenBuild: (build: PCBuild) => 
           {builds.map((build) => (
             <button type="button" key={build.id} onClick={() => onOpenBuild(build)}>
               <span className="activity-icon"><Clock3 size={18} /></span>
-              <span className="activity-copy"><strong>{build.title}</strong><small>{build.createdAt === build.updatedAt ? '收藏了这个方案' : '更新了配置或价格'} · {formatDate(build.updatedAt.slice(0, 10))}</small></span>
+              <span className="activity-copy"><strong>{schemeNames[build.id]}</strong><small>{build.createdAt === build.updatedAt ? '收藏了这个方案' : '更新了配置或价格'} · {formatDate(build.updatedAt.slice(0, 10))}</small></span>
               <span className="activity-price">{currency.format(build.price)}</span>
               <ChevronRight size={18} />
             </button>

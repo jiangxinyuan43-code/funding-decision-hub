@@ -45,21 +45,20 @@ function scoreBuild(build: PCBuild, all: PCBuild[]) {
   return { scores, total, unknownCount }
 }
 
-function shortTitle(title: string, index: number) {
-  const match = title.match(/(9800X3D|7800X3D|9950X3D|7950X3D).*?(RTX\s*\d{4}(?:\s*Ti)?)/i)
-  return match ? `${match[1]} + ${match[2]}` : `方案${String.fromCharCode(65 + index)}`
+function shortTitle(build: PCBuild, index: number, names: Readonly<Record<string, string>>) {
+  return names[build.id] ?? `方案${String.fromCharCode(65 + index)}`
 }
 
-function buildReport(builds: PCBuild[]) {
+function buildReport(builds: PCBuild[], names: Readonly<Record<string, string>>) {
   const ranked = builds.map((build, index) => ({ build, index, result: scoreBuild(build, builds) })).sort((a, b) => b.result.total - a.result.total)
   const rankings: ComparisonRanking[] = ranked.map(({ build, index, result }, rankIndex) => {
     const recommendation = rankIndex === 0 ? '首选' : rankIndex === 1 ? '次选' : result.unknownCount >= 4 || result.total < 65 ? '不建议' : '可考虑'
     const headline = recommendation === '首选' ? '综合性能和风险最平衡' : recommendation === '次选' ? '预算更友好，但需要接受取舍' : recommendation === '不建议' ? '关键配件信息不足，先不要下单' : '可以考虑，优先补齐待确认项'
-    return { buildId: build.id, title: build.title, shortTitle: shortTitle(build.title, index), rank: rankIndex + 1, total: result.total, recommendation, scores: result.scores, headline }
+    return { buildId: build.id, title: build.title, shortTitle: shortTitle(build, index, names), rank: rankIndex + 1, total: result.total, recommendation, scores: result.scores, headline }
   })
   const winner = rankings[0]
   const runnerUp = rankings[1]
-  const avoid = rankings.find((item) => item.recommendation === '不建议') ?? rankings[rankings.length - 1]
+  const avoid = rankings.find((item) => item.recommendation === '不建议')
   const winnerBuild = builds.find((build) => build.id === winner?.buildId)
   const coreReason = winner && winnerBuild ? `${winner.shortTitle}以 ${winner.total} 分排第一，主要靠 ${winner.scores.performance} 分性能和 ${winner.scores.compatibility} 分稳定性；${winnerBuild.components.motherboard.value || '主板'}仍需确认。` : '当前方案不足两个，无法形成可靠排名。'
   return {
@@ -76,13 +75,13 @@ function buildReport(builds: PCBuild[]) {
       '多任务：32GB 可覆盖常规办公和游戏，64GB 对浏览器多开、剪辑和本地 AI 更从容；内存单双通道需以实物或订单确认。',
       '未来 3 至 5 年：优先确认电源、主板和 SSD 具体型号；这些字段不明确时，性能再高也不代表整机长期可靠。',
     ],
-    valueNotes: ranked.map(({ build, result }) => `${shortTitle(build.title, 0)}：${build.price > 0 ? `¥${build.price.toLocaleString('zh-CN')}，综合 ${result.total} 分` : '价格未知，暂不判断每元性能'}。${result.unknownCount ? `有 ${result.unknownCount} 项硬件信息需确认。` : '配置完整度较好。'}`),
+    valueNotes: ranked.map(({ build, index, result }) => `${shortTitle(build, index, names)}：${build.price > 0 ? `¥${build.price.toLocaleString('zh-CN')}，综合 ${result.total} 分` : '价格未知，暂不判断每元性能'}。${result.unknownCount ? `有 ${result.unknownCount} 项硬件信息需确认。` : '配置完整度较好。'}`),
     priceFreshness: '价格判断基于当前录入报价和记录时间；促销、地区、库存和赠品变化可能改变性价比排序。',
     finalSentence: winner ? `在“2K 游戏 + 日常生产力、预算敏感”的用途下，${winner.shortTitle}更好，因为它在性能、价格和整机风险之间的综合分最高。` : '当前方案不足两个，补齐候选后再做最终推荐。',
   }
 }
 
-export function compareBuildsLocally(builds: PCBuild[]): ComparisonAnalysis {
+export function compareBuildsLocally(builds: PCBuild[], names: Readonly<Record<string, string>> = {}): ComparisonAnalysis {
   if (builds.length < 2) return { coreDifferences: [], risks: {}, priceNotes: [], usageNotes: [], unknowns: [], source: 'local' }
   const keys = Object.keys(componentLabels) as ComponentKey[]
   const differences = keys
@@ -124,7 +123,7 @@ export function compareBuildsLocally(builds: PCBuild[]): ComparisonAnalysis {
     usageNotes: ['游戏优先看 GPU 与帧时间', '本地 AI 优先看 GPU 显存', '后续升级重点确认主板、电源和机箱兼容性'],
     unknowns,
     source: 'local',
-    report: buildReport(builds),
+    report: buildReport(builds, names),
   }
 }
 

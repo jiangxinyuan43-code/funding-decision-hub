@@ -9,6 +9,7 @@ import { buildTags, calculateCompleteness, findLikelyDuplicate, normalizeCompone
 import { componentLabels, emptyComponents, type BuildAnalysis, type BuildComponents, type ComponentKey, type PCBuild, type Platform, type StoredImage } from '../../types/models'
 import { createId } from '../../utils/ids'
 import { normalizeHttpUrl } from '../../utils/url'
+import { buildSchemeNameMap } from '../../features/pc-build/buildNames'
 
 interface Props { open: boolean; onClose: () => void; notify: (message: string, tone?: 'success' | 'error') => void }
 
@@ -83,6 +84,7 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
       priceHistory: price > 0 ? [{ id: createId('price'), price, recordedAt: now }] : [], snapshots: [], analysis, checklist: checklist(), note, createdAt: now, updatedAt: now,
     }
     const duplicate = findLikelyDuplicate(candidate, builds)
+    const schemeName = duplicate ? buildSchemeNameMap(builds)[duplicate.id] : buildSchemeNameMap([...builds, candidate])[candidate.id]
     if (duplicate) {
       const priceChanged = price > 0 && price !== duplicate.price
       const existingImages = await getBuildImages(duplicate.id)
@@ -103,10 +105,10 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
         note: note || duplicate.note,
         updatedAt: now,
       })
-      notify(priceChanged ? '识别为同一商品，已追加价格记录' : '识别为同一商品，已更新配置快照')
+      notify(priceChanged ? `${schemeName} 已追加价格记录` : `${schemeName} 已更新配置快照`)
     } else {
-      await putBuild(candidate)
-      notify('方案已保存，可继续收藏下一台')
+      await putBuild({ ...candidate, schemeName })
+      notify(`${schemeName} 已保存，可继续收藏下一台`)
     }
     onClose()
   }

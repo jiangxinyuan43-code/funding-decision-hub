@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { Countdown, FinancialPlan, PCBuild, PurchaseGoal, UserSettings } from '../../types/models'
 import { defaultBuilds, defaultCountdowns, defaultFinance, defaultGoals, defaultSettings } from '../../data/seed'
 import { parseBackupV1 } from './backup'
+import { buildSchemeNameMap } from '../../features/pc-build/buildNames'
 
 type StoredBuildImage = Omit<PCBuild['images'][number], 'original'> & { buildId: string }
 
@@ -35,6 +36,12 @@ class FundingDatabase extends Dexie {
         if (images.length) await imageTable.bulkPut(images)
         await buildTable.put({ ...build, images: [] })
       }
+    })
+    this.version(3).stores({}).upgrade(async (transaction) => {
+      const buildTable = transaction.table<PCBuild>('builds')
+      const builds = await buildTable.toArray()
+      const names = buildSchemeNameMap(builds)
+      await buildTable.bulkPut(builds.map((build) => ({ ...build, schemeName: names[build.id] })))
     })
   }
 }
@@ -127,6 +134,9 @@ export async function importAllData(raw: string) {
     ...build,
     images: (build.images ?? []).map(({ original: _original, ...image }) => image),
   }))
+  const currentBuilds = await db.builds.toArray()
+  const importedIds = new Set(builds.map((build) => build.id))
+  const names = buildSchemeNameMap([...currentBuilds.filter((build) => !importedIds.has(build.id)), ...builds])
 
   await db.transaction('rw', [db.settings, db.financePlans, db.countdowns, db.goals, db.builds, db.buildImages], async () => {
     if (parsed.data?.settings?.length) {
@@ -139,9 +149,9 @@ export async function importAllData(raw: string) {
     if (parsed.data?.countdowns?.length) await db.countdowns.bulkPut(parsed.data.countdowns)
     if (parsed.data?.goals?.length) await db.goals.bulkPut(parsed.data.goals)
     if (builds.length) {
-      await db.builds.bulkPut(builds.map(lightweightBuild))
-      const importedIds = builds.map((build) => build.id)
-      await db.buildImages.where('buildId').anyOf(importedIds).delete()
+      await db.builds.bulkPut(builds.map((build) => lightweightBuild({ ...build, schemeName: names[build.id] })))
+      const buildIds = builds.map((build) => build.id)
+      await db.buildImages.where('buildId').anyOf(buildIds).delete()
       const images = builds.flatMap(storedImages)
       if (images.length) await db.buildImages.bulkPut(images)
     }

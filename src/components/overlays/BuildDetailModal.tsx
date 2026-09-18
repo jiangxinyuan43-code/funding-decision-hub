@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { ExternalLink, Heart, ImageOff, Save, ShieldAlert, Star, Trash2, TriangleAlert, X } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { Progress } from '../ui/Progress'
 import { PriceTrend } from '../ui/PriceTrend'
-import { deleteBuild as deleteStoredBuild, getBuildImages, putBuild } from '../../services/storage/db'
+import { db, deleteBuild as deleteStoredBuild, getBuildImages, putBuild } from '../../services/storage/db'
 import { buildTags, calculateCompleteness, normalizeComponents } from '../../features/pc-build/hardware'
 import { componentLabels, type BuildStatus, type ComponentKey, type PCBuild } from '../../types/models'
 import { currency } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { normalizeHttpUrl } from '../../utils/url'
+import { buildSchemeNameMap } from '../../features/pc-build/buildNames'
 
 interface Props {
   build: PCBuild | null
@@ -42,6 +44,8 @@ function cloneBuild(build: PCBuild): PCBuild {
 }
 
 export function BuildDetailModal({ build, onClose, notify }: Props) {
+  const builds = useLiveQuery(() => db.builds.toArray(), []) ?? []
+  const schemeName = build ? buildSchemeNameMap(builds)[build.id] ?? '整机方案' : '整机方案'
   const [draft, setDraft] = useState<PCBuild | null>(build)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => {
@@ -102,7 +106,7 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
   const hasUnknownPsu = !draft.components.psu.value || /未明确|未知/.test(draft.components.psu.value)
 
   return (
-    <Modal open={Boolean(build)} onClose={onClose} title={draft.title} description={`${draft.platform} · ${draft.store || '店铺待补充'}`} size="wide">
+    <Modal open={Boolean(build)} onClose={onClose} title={schemeName} description={`${draft.title} · ${draft.platform} · ${draft.store || '店铺待补充'}`} size="wide">
       <section className="build-detail-hero">
         <div><span>当前记录价格</span><strong>{currency.format(draft.price)}</strong><p>{draft.components.cpu.value.replace('AMD Ryzen 7 ', '')} + {draft.components.gpu.value.replace('NVIDIA GeForce ', '')}</p></div>
         <button className={draft.favorite ? 'favorite-button is-active' : 'favorite-button'} type="button" onClick={() => setDraft({ ...draft, favorite: !draft.favorite, status: !draft.favorite ? 'priority' : draft.status === 'priority' ? 'candidate' : draft.status })}><Heart size={19} fill={draft.favorite ? 'currentColor' : 'none'} />{draft.favorite ? '重点关注' : '设为重点'}</button>
@@ -146,7 +150,7 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
           <button className="danger-text-button" type="button" onClick={() => setConfirmingDelete(true)}><Trash2 size={17} /> 删除这条配置</button>
         ) : (
           <div className="delete-confirmation" role="alert">
-            <div><strong>确认删除“{draft.title}”？</strong><p>截图、价格历史和检查清单会一起删除，且无法撤销。</p></div>
+            <div><strong>确认删除“{schemeName}”？</strong><p>{draft.title} 的截图、价格历史和检查清单会一起删除，且无法撤销。</p></div>
             <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(false)}>取消</button>
             <button className="danger-button" type="button" onClick={deleteBuild}><Trash2 size={17} /> 确认删除</button>
           </div>

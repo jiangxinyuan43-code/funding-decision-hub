@@ -5,6 +5,7 @@ import { db } from '../services/storage/db'
 import type { BuildStatus, PCBuild } from '../types/models'
 import { currency } from '../utils/format'
 import { Progress } from '../components/ui/Progress'
+import { buildSchemeNameMap } from '../features/pc-build/buildNames'
 
 const statusLabels: Record<BuildStatus | 'all', string> = {
   all: '全部',
@@ -22,6 +23,7 @@ export function BuildsPage({ onAdd, onOpen }: { onAdd: () => void; onOpen: (buil
   const [status, setStatus] = useState<BuildStatus | 'all'>('all')
   const [sort, setSort] = useState('updated')
   const [showFilters, setShowFilters] = useState(false)
+  const schemeNames = useMemo(() => buildSchemeNameMap(builds), [builds])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -77,7 +79,7 @@ export function BuildsPage({ onAdd, onOpen }: { onAdd: () => void; onOpen: (buil
                 <span className={`status-pill status-pill--${build.status}`}>{statusLabels[build.status]}</span>
                 {build.favorite && <Heart size={17} fill="currentColor" aria-label="重点关注" />}
               </div>
-              <div className="build-card__title"><h2>{build.title}</h2><strong>{currency.format(build.price)}</strong></div>
+              <div className="build-card__title"><div><h2>{schemeNames[build.id]}</h2><p>{build.title}</p></div><strong>{currency.format(build.price)}</strong></div>
               <div className="build-card__specs">
                 <span><small>CPU</small>{build.components.cpu.value || '待补充'}</span>
                 <span><small>GPU</small>{build.components.gpu.value || '待补充'} {build.components.vram.value && `· ${build.components.vram.value}`}</span>

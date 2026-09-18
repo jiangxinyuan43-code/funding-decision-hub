@@ -67,6 +67,7 @@ export interface PurchaseChecklistItem {
 
 export interface PCBuild {
   id: string
+  schemeName?: string
   title: string
   platform: Platform
   store: string
