@@ -2,7 +2,7 @@
 
 内部项目名：`funding-decision-hub`
 
-一个移动端优先、数据本地保存的个人资金目标与购机决策 PWA。V1.1 覆盖资金预测、倒数日管理、整机截图收藏、OpenAI-compatible 图片识别、人工校正、方案对比、完整增删改、导入导出和深色模式。
+一个移动端优先、数据本地保存的个人资金目标与购机决策工具。V1.1.2 覆盖资金预测、倒数日管理、整机截图收藏、OpenAI-compatible 图片识别、人工校正、全量方案对比、完整增删改、导入导出和深色模式。
 
 在线地址：<https://jiangxinyuan43-code.github.io/funding-decision-hub/>
 
@@ -22,7 +22,7 @@ npm run build
 npm run preview
 ```
 
-构建产物位于 `dist/`。可以部署到任意静态托管服务；站点需要使用 HTTPS 才能完整启用 PWA 安装和 Service Worker（`localhost` 例外）。
+构建产物位于 `dist/`，可以部署到任意静态托管服务。当前版本保留 Web App Manifest，但主动退役了离线 Service Worker，避免 iOS Safari 与应用内 WebView 的缓存进程在反复进入时崩溃。
 
 GitHub Pages 使用专用构建命令：
 
@@ -76,6 +76,8 @@ IndexedDB 数据库名：`funding-decision-hub`
 - 商品链接只允许 HTTP(S)，避免保存或打开可执行协议。
 - 弹窗支持焦点约束、Esc 关闭和焦点恢复；PWA 资源支持 GitHub Pages 子路径。
 - 发布资源使用稳定入口，并保留旧哈希兼容副本；手机浏览器缓存旧页面时仍可加载最新应用。
+- 对比报告默认覆盖配置库中的全部方案；AI 输出不完整时保留本地确定性报告，不因缺少配置字段中断。
+- 整机截图独立按需读取，列表启动不再一次性载入全部图片；现有数据会自动迁移且不丢失。
 
 ## 已知边界
 

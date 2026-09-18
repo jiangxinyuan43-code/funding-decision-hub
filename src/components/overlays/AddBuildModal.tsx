@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, ImagePlus, LoaderCircle, Plus, Save, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
 import { Modal } from '../ui/Modal'
-import { db } from '../../services/storage/db'
+import { db, getBuildImages, putBuild } from '../../services/storage/db'
 import { compressImages } from '../../services/image/compress'
 import { createAIProvider } from '../../services/ai/client'
 import { buildTags, calculateCompleteness, findLikelyDuplicate, normalizeComponents } from '../../features/pc-build/hardware'
@@ -85,7 +85,8 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
     const duplicate = findLikelyDuplicate(candidate, builds)
     if (duplicate) {
       const priceChanged = price > 0 && price !== duplicate.price
-      await db.builds.put({
+      const existingImages = await getBuildImages(duplicate.id)
+      await putBuild({
         ...duplicate,
         title: resolvedTitle || duplicate.title,
         platform,
@@ -95,16 +96,16 @@ export function AddBuildModal({ open, onClose, notify }: Props) {
         components: normalized,
         completeness: candidate.completeness,
         tags: candidate.tags,
-        images: [...duplicate.images, ...images],
+        images: [...existingImages, ...images],
         analysis: analysis ?? duplicate.analysis,
         priceHistory: priceChanged ? [...duplicate.priceHistory, { id: createId('price'), price, recordedAt: now }] : duplicate.priceHistory,
-        snapshots: [...duplicate.snapshots, { id: createId('snapshot'), price: duplicate.price, components: duplicate.components, imageIds: duplicate.images.map((image) => image.id), url: duplicate.url, createdAt: now }],
+        snapshots: [...duplicate.snapshots, { id: createId('snapshot'), price: duplicate.price, components: duplicate.components, imageIds: existingImages.map((image) => image.id), url: duplicate.url, createdAt: now }],
         note: note || duplicate.note,
         updatedAt: now,
       })
       notify(priceChanged ? '识别为同一商品，已追加价格记录' : '识别为同一商品，已更新配置快照')
     } else {
-      await db.builds.add(candidate)
+      await putBuild(candidate)
       notify('方案已保存，可继续收藏下一台')
     }
     onClose()

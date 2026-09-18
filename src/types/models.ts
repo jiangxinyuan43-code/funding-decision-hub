@@ -29,7 +29,7 @@ export interface StoredImage {
   name: string
   type: string
   size: number
-  original: Blob
+  original?: Blob
   compressedDataUrl: string
   createdAt: string
 }
@@ -138,6 +138,7 @@ export interface ComparisonAnalysis {
   priceNotes: string[]
   usageNotes: string[]
   unknowns: string[]
+  source?: 'local' | 'hybrid'
 }
 
 export const componentLabels: Record<ComponentKey, string> = {

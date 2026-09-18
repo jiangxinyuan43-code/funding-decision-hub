@@ -5,16 +5,27 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { initializeDatabase } from './services/storage/db'
 import './styles.css'
 
+async function retireLegacyOfflineCache() {
+  if ('serviceWorker' in navigator) {
+    const registrations = typeof navigator.serviceWorker.getRegistrations === 'function'
+      ? await navigator.serviceWorker.getRegistrations()
+      : [await navigator.serviceWorker.getRegistration()].filter(Boolean)
+    await Promise.all(registrations.map((registration) => registration?.unregister()))
+  }
+  if ('caches' in window) {
+    const keys = await caches.keys()
+    await Promise.all(keys.filter((key) => key.startsWith('funding-decision-hub-')).map((key) => caches.delete(key)))
+  }
+}
+
 async function start() {
+  void retireLegacyOfflineCache().catch(() => undefined)
   await initializeDatabase()
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ErrorBoundary><App /></ErrorBoundary>
     </React.StrictMode>,
   )
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined)
-  }
 }
 
 start().catch(() => {

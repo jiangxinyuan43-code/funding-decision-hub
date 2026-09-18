@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractionSchema } from './schemas'
+import { comparisonSchema, extractionSchema } from './schemas'
 
 describe('AI extraction compatibility', () => {
   it('accepts component fields returned at the root', () => {
@@ -30,5 +30,31 @@ describe('AI extraction compatibility', () => {
     expect(result.fields.psu.value).toBe('750W')
     expect(result.risks).toEqual(['电源具体型号待确认'])
     expect(result.fields.case).toEqual({ value: '', confidence: 0 })
+  })
+})
+
+describe('AI comparison compatibility', () => {
+  it('accepts incomplete and aliased comparison fields', () => {
+    const result = comparisonSchema.parse({
+      differences: ['显卡性能不同'],
+      warnings: ['方案甲：电源型号待确认', '方案乙: 主板型号待确认'],
+      recommendations: '本地 AI 优先确认显存容量',
+    })
+
+    expect(result.coreDifferences).toEqual(['显卡性能不同'])
+    expect(result.risks).toEqual({ 方案甲: ['电源型号待确认'], 方案乙: ['主板型号待确认'] })
+    expect(result.priceNotes).toEqual([])
+    expect(result.usageNotes).toEqual(['本地 AI 优先确认显存容量'])
+    expect(result.unknowns).toEqual([])
+  })
+
+  it('fills every missing comparison section instead of rejecting the report', () => {
+    expect(comparisonSchema.parse({})).toEqual({
+      coreDifferences: [],
+      risks: {},
+      priceNotes: [],
+      usageNotes: [],
+      unknowns: [],
+    })
   })
 })

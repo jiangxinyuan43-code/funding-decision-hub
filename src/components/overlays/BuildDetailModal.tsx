@@ -3,7 +3,7 @@ import { ExternalLink, Heart, ImageOff, Save, ShieldAlert, Star, Trash2, Triangl
 import { Modal } from '../ui/Modal'
 import { Progress } from '../ui/Progress'
 import { PriceTrend } from '../ui/PriceTrend'
-import { db } from '../../services/storage/db'
+import { deleteBuild as deleteStoredBuild, getBuildImages, putBuild } from '../../services/storage/db'
 import { buildTags, calculateCompleteness, normalizeComponents } from '../../features/pc-build/hardware'
 import { componentLabels, type BuildStatus, type ComponentKey, type PCBuild } from '../../types/models'
 import { currency } from '../../utils/format'
@@ -45,8 +45,15 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
   const [draft, setDraft] = useState<PCBuild | null>(build)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   useEffect(() => {
+    let active = true
     setDraft(build ? cloneBuild(build) : null)
     setConfirmingDelete(false)
+    if (build) {
+      getBuildImages(build.id).then((images) => {
+        if (active) setDraft(cloneBuild({ ...build, images }))
+      }).catch(() => undefined)
+    }
+    return () => { active = false }
   }, [build])
   if (!draft) return null
   const updateComponent = (key: ComponentKey, value: string) => setDraft((current) => current ? { ...current, components: { ...current.components, [key]: { value, confidence: 1, source: 'manual', confirmed: true } } } : current)
@@ -62,7 +69,7 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
     const now = new Date().toISOString()
     const priceChanged = draft.price > 0 && draft.price !== build.price
     const recordChanged = priceChanged || productUrl !== build.url || JSON.stringify(components) !== JSON.stringify(build.components)
-    await db.builds.put({
+    await putBuild({
       ...draft,
       title: draft.title.trim() || '未命名整机方案',
       store: draft.store.trim(),
@@ -72,7 +79,7 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
       completeness: calculateCompleteness(components),
       tags: buildTags(components, draft.price),
       priceHistory: priceChanged ? [...draft.priceHistory, { id: createId('price'), price: draft.price, recordedAt: now }] : draft.priceHistory,
-      snapshots: recordChanged ? [...draft.snapshots, { id: createId('snapshot'), price: build.price, components: build.components, imageIds: build.images.map((image) => image.id), url: build.url, createdAt: now }] : draft.snapshots,
+      snapshots: recordChanged ? [...draft.snapshots, { id: createId('snapshot'), price: build.price, components: build.components, imageIds: draft.images.map((image) => image.id), url: build.url, createdAt: now }] : draft.snapshots,
       updatedAt: now,
     })
     notify(priceChanged ? '修改已保存，并记录本次价格' : '配置修改已保存')
@@ -88,7 +95,7 @@ export function BuildDetailModal({ build, onClose, notify }: Props) {
   }
   const removeImage = (id: string) => setDraft((current) => current ? { ...current, images: current.images.filter((image) => image.id !== id) } : current)
   const deleteBuild = async () => {
-    await db.builds.delete(draft.id)
+    await deleteStoredBuild(draft.id)
     notify('配置已删除')
     onClose()
   }

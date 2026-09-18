@@ -34,8 +34,8 @@ if (!html.includes('/funding-decision-hub/assets/app.js') || !html.includes('/fu
 }
 
 const serviceWorker = readFileSync(resolve(root, 'sw.js'), 'utf8')
-if (!serviceWorker.includes('funding-decision-hub-') || !serviceWorker.includes('legacyAssetTarget')) {
-  throw new Error('Service Worker 缺少版本缓存或旧资源兼容逻辑')
+if (!serviceWorker.includes('funding-decision-hub-') || !serviceWorker.includes('registration.unregister()') || serviceWorker.includes("addEventListener('fetch'")) {
+  throw new Error('Service Worker 没有正确退役或仍在拦截页面请求')
 }
 
 console.log(`Dist verification passed: ${requiredFiles.length} required files and 4 legacy aliases`)

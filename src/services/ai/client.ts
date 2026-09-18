@@ -1,4 +1,5 @@
 import type { ComparisonAnalysis, PCBuild, UserSettings } from '../../types/models'
+import { compareBuildsLocally, mergeComparisonWithAI } from '../../features/comparison/localComparison'
 import {
   comparisonJsonSchema,
   comparisonSchema,
@@ -125,28 +126,41 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   async compareBuilds(builds: PCBuild[]) {
+    const baseline = compareBuildsLocally(builds)
     const compact = builds.map((build) => ({
+      id: build.id,
       title: build.title,
       price: build.price,
       store: build.store,
       completeness: build.completeness,
       components: Object.fromEntries(Object.entries(build.components).map(([key, field]) => [key, field.value || '未明确'])),
     }))
-    const result = await this.request(
-      this.settings.model,
-      [
-        {
-          role: 'system',
-          content: '你是购机决策支持助手。只比较给定事实，不替用户做最终购买决定，不补全未知硬件。只输出 JSON，必须包含 coreDifferences、risks、priceNotes、usageNotes、unknowns 五个键。',
-        },
-        { role: 'user', content: `比较以下 2-4 个方案：${JSON.stringify(compact)}` },
-      ],
-      comparisonJsonSchema as unknown as JsonSchema,
-      'pc_build_comparison',
-    )
-    const parsed = comparisonSchema.safeParse(result)
-    if (!parsed.success) throw new Error('AI 返回的对比结构不完整，请重试')
-    return parsed.data
+    try {
+      const result = await this.request(
+        this.settings.model,
+        [
+          {
+            role: 'system',
+            content: '你是购机决策支持助手。只根据给定事实补充对比分析，不猜测未知硬件。只输出 JSON，保留 coreDifferences、risks、priceNotes、usageNotes、unknowns 五个键，所有键的值都必须是字符串数组。risks 中每条用“方案名称：风险”的格式。配置字段缺失不是错误，应写入 unknowns，并继续分析其他已知字段。',
+          },
+          { role: 'user', content: `为以下全部整机方案补充对比意见：${JSON.stringify(compact)}` },
+        ],
+        comparisonJsonSchema as unknown as JsonSchema,
+        'pc_build_comparison',
+      )
+      const parsed = comparisonSchema.safeParse(result)
+      if (!parsed.success) return baseline
+      const hasGeneratedContent = parsed.data.coreDifferences.length
+        || Object.keys(parsed.data.risks).length
+        || parsed.data.priceNotes.length
+        || parsed.data.usageNotes.length
+        || parsed.data.unknowns.length
+      if (!hasGeneratedContent) return baseline
+      return mergeComparisonWithAI(baseline, parsed.data)
+    } catch (error) {
+      if (error instanceof Error && /^AI (返回|未返回)/.test(error.message)) return baseline
+      throw error
+    }
   }
 
   async normalizeHardware(value: string, kind: 'cpu' | 'gpu') {

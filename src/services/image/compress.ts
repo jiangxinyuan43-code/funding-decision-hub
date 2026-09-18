@@ -39,7 +39,6 @@ export async function compressImage(file: File, maxDimension = 1800): Promise<St
     name: file.name,
     type: file.type,
     size: file.size,
-    original: file,
     compressedDataUrl,
     createdAt: new Date().toISOString(),
   }

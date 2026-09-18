@@ -3,12 +3,15 @@ import type { Countdown, FinancialPlan, PCBuild, PurchaseGoal, UserSettings } fr
 import { defaultBuilds, defaultCountdowns, defaultFinance, defaultGoals, defaultSettings } from '../../data/seed'
 import { parseBackupV1 } from './backup'
 
+type StoredBuildImage = Omit<PCBuild['images'][number], 'original'> & { buildId: string }
+
 class FundingDatabase extends Dexie {
   settings!: EntityTable<UserSettings, 'id'>
   financePlans!: EntityTable<FinancialPlan, 'id'>
   countdowns!: EntityTable<Countdown, 'id'>
   goals!: EntityTable<PurchaseGoal, 'id'>
   builds!: EntityTable<PCBuild, 'id'>
+  buildImages!: EntityTable<StoredBuildImage, 'id'>
 
   constructor() {
     super('funding-decision-hub')
@@ -18,6 +21,20 @@ class FundingDatabase extends Dexie {
       countdowns: 'id, targetDate, pinned, showOnHome',
       goals: 'id, category, targetDate, active',
       builds: 'id, status, favorite, price, createdAt, updatedAt, *tags',
+    })
+    this.version(2).stores({
+      buildImages: 'id, buildId, createdAt',
+    }).upgrade(async (transaction) => {
+      const buildTable = transaction.table<PCBuild>('builds')
+      const imageTable = transaction.table<StoredBuildImage>('buildImages')
+      const buildIds = await buildTable.toCollection().primaryKeys()
+      for (const id of buildIds) {
+        const build = await buildTable.get(id)
+        if (!build) continue
+        const images = build.images.map(({ original: _original, ...image }) => ({ ...image, buildId: build.id }))
+        if (images.length) await imageTable.bulkPut(images)
+        await buildTable.put({ ...build, images: [] })
+      }
     })
   }
 }
@@ -31,7 +48,7 @@ function currentMonthEndDate() {
 }
 
 export async function initializeDatabase() {
-  await db.transaction('rw', db.settings, db.financePlans, db.countdowns, db.goals, db.builds, async () => {
+  await db.transaction('rw', [db.settings, db.financePlans, db.countdowns, db.goals, db.builds, db.buildImages], async () => {
     const counts = await Promise.all([db.settings.count(), db.financePlans.count(), db.countdowns.count(), db.goals.count(), db.builds.count()])
     const isFirstLaunch = counts.every((count) => count === 0)
     if (counts[0] === 0) await db.settings.add(defaultSettings)
@@ -44,21 +61,34 @@ export async function initializeDatabase() {
   })
 }
 
-async function blobToDataUrl(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+function lightweightBuild(build: PCBuild): PCBuild {
+  return { ...build, images: [] }
+}
+
+function storedImages(build: PCBuild): StoredBuildImage[] {
+  return build.images.map(({ original: _original, ...image }) => ({ ...image, buildId: build.id }))
+}
+
+export async function getBuildImages(buildId: string): Promise<PCBuild['images']> {
+  const images = await db.buildImages.where('buildId').equals(buildId).sortBy('createdAt')
+  return images.map(({ buildId: _buildId, ...image }) => image)
+}
+
+export async function putBuild(build: PCBuild) {
+  await db.transaction('rw', db.builds, db.buildImages, async () => {
+    await db.builds.put(lightweightBuild(build))
+    const existingIds = await db.buildImages.where('buildId').equals(build.id).primaryKeys()
+    if (existingIds.length) await db.buildImages.bulkDelete(existingIds)
+    const images = storedImages(build)
+    if (images.length) await db.buildImages.bulkPut(images)
   })
 }
 
-async function dataUrlToBlob(dataUrl: string) {
-  const response = await fetch(dataUrl)
-  const blob = await response.blob()
-  if (!blob.type.startsWith('image/')) throw new Error('备份中的图片格式无效')
-  if (blob.size > 20 * 1024 * 1024) throw new Error('备份中的单张图片超过 20MB')
-  return blob
+export async function deleteBuild(buildId: string) {
+  await db.transaction('rw', db.builds, db.buildImages, async () => {
+    await db.builds.delete(buildId)
+    await db.buildImages.where('buildId').equals(buildId).delete()
+  })
 }
 
 export async function exportAllData() {
@@ -73,12 +103,7 @@ export async function exportAllData() {
   const portableBuilds = await Promise.all(
     builds.map(async (build) => ({
       ...build,
-      images: await Promise.all(
-        build.images.map(async (image) => ({
-          ...image,
-          original: await blobToDataUrl(image.original),
-        })),
-      ),
+      images: (await getBuildImages(build.id)).map((image) => ({ ...image, original: image.compressedDataUrl })),
     })),
   )
 
@@ -98,16 +123,12 @@ export async function exportAllData() {
 export async function importAllData(raw: string) {
   const parsed = parseBackupV1(raw)
 
-  const builds = await Promise.all(
-    (parsed.data.builds ?? []).map(async (build) => ({
-      ...build,
-      images: await Promise.all(
-        (build.images ?? []).map(async (image) => ({ ...image, original: await dataUrlToBlob(image.original) })),
-      ),
-    })),
-  )
+  const builds = (parsed.data.builds ?? []).map((build) => ({
+    ...build,
+    images: (build.images ?? []).map(({ original: _original, ...image }) => image),
+  }))
 
-  await db.transaction('rw', db.settings, db.financePlans, db.countdowns, db.goals, db.builds, async () => {
+  await db.transaction('rw', [db.settings, db.financePlans, db.countdowns, db.goals, db.builds, db.buildImages], async () => {
     if (parsed.data?.settings?.length) {
       const currentSettings = await db.settings.get('primary')
       await db.settings.bulkPut(parsed.data.settings.map((setting) => ({ ...setting, apiKey: currentSettings?.apiKey ?? '' })))
@@ -117,7 +138,13 @@ export async function importAllData(raw: string) {
     }
     if (parsed.data?.countdowns?.length) await db.countdowns.bulkPut(parsed.data.countdowns)
     if (parsed.data?.goals?.length) await db.goals.bulkPut(parsed.data.goals)
-    if (builds.length) await db.builds.bulkPut(builds)
+    if (builds.length) {
+      await db.builds.bulkPut(builds.map(lightweightBuild))
+      const importedIds = builds.map((build) => build.id)
+      await db.buildImages.where('buildId').anyOf(importedIds).delete()
+      const images = builds.flatMap(storedImages)
+      if (images.length) await db.buildImages.bulkPut(images)
+    }
   })
 
   return {
@@ -131,8 +158,8 @@ export async function clearUserData() {
   const now = new Date().toISOString()
   const today = new Date()
   const targetYear = today > new Date(today.getFullYear(), 10, 11, 23, 59, 59) ? today.getFullYear() + 1 : today.getFullYear()
-  await db.transaction('rw', db.financePlans, db.countdowns, db.goals, db.builds, async () => {
-    await Promise.all([db.countdowns.clear(), db.goals.clear(), db.builds.clear()])
+  await db.transaction('rw', db.financePlans, db.countdowns, db.goals, db.builds, db.buildImages, async () => {
+    await Promise.all([db.countdowns.clear(), db.goals.clear(), db.builds.clear(), db.buildImages.clear()])
     await db.financePlans.put({
       ...defaultFinance,
       currentBalance: 0,

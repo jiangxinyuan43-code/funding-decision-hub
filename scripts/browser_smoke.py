@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import re
 from playwright.sync_api import sync_playwright
 
@@ -18,7 +19,7 @@ def run_viewport(browser, name: str, width: int, height: int, context_options=No
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
     page.on("pageerror", lambda error: errors.append(str(error)))
 
-    page.goto("http://127.0.0.1:5173", wait_until="networkidle")
+    page.goto(os.environ.get("BROWSER_SMOKE_URL", "http://127.0.0.1:5173"), wait_until="domcontentloaded")
     page.get_by_role("heading", name="个人资金计划").wait_for()
     page.get_by_label("双十一倒计时").get_by_text("双十一", exact=True).wait_for()
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} has horizontal page overflow"
@@ -51,7 +52,9 @@ def run_viewport(browser, name: str, width: int, height: int, context_options=No
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("当前价格").fill("9799")
     dialog.get_by_role("button", name="保存修改").click()
-    page.get_by_role("button", name=re.compile("删除闭环测试")).click()
+    updated_build = page.get_by_role("button", name=re.compile("删除闭环测试.*9,799"))
+    updated_build.wait_for()
+    updated_build.click()
     dialog = page.get_by_role("dialog")
     assert dialog.get_by_label("当前价格").input_value() == "9799"
     dialog.get_by_role("button", name="删除这条配置").click()
@@ -65,7 +68,8 @@ def run_viewport(browser, name: str, width: int, height: int, context_options=No
     page.get_by_role("button", name="关闭").click()
 
     page.get_by_role("button", name="对比", exact=True).click()
-    page.get_by_role("heading", name="差异先于结论").wait_for()
+    page.get_by_role("heading", name="完整对比报告").wait_for()
+    page.get_by_role("heading", name="每个方案的风险与待确认项").wait_for()
     page.locator(".comparison-table" if width >= 900 else ".comparison-mobile").wait_for()
     page.screenshot(path=str(OUTPUT / f"compare-{name}.png"), full_page=True)
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), f"{name} compare page has horizontal overflow"
@@ -87,7 +91,7 @@ def run_viewport(browser, name: str, width: int, height: int, context_options=No
     page.get_by_text("资金、配置、目标和倒数日已清空", exact=True).wait_for()
     page.get_by_role("button", name="配置", exact=True).click()
     page.get_by_role("heading", name="没有匹配的方案").wait_for()
-    page.reload(wait_until="networkidle")
+    page.reload(wait_until="domcontentloaded")
     page.get_by_role("button", name="配置", exact=True).click()
     page.get_by_role("heading", name="没有匹配的方案").wait_for()
     assert page.locator(".build-card").count() == 0

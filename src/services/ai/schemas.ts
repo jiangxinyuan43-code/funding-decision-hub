@@ -43,6 +43,42 @@ function list(value: unknown) {
   return resolved ? [resolved] : []
 }
 
+function comparisonRisks(value: unknown) {
+  if (Array.isArray(value)) {
+    const items = list(value)
+    const grouped: Record<string, string[]> = {}
+    for (const item of items) {
+      const separator = item.search(/[：:]/)
+      const name = separator > 0 ? item.slice(0, separator).trim() : '模型补充核验'
+      const detail = separator > 0 ? item.slice(separator + 1).trim() : item
+      if (detail) grouped[name] = [...(grouped[name] ?? []), detail]
+    }
+    return grouped
+  }
+  const source = record(value)
+  if (!source) {
+    const items = list(value)
+    return items.length ? { '模型补充核验': items } : {}
+  }
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([name, items]) => [text(name) || '模型补充核验', list(items)])
+      .filter((entry) => entry[1].length > 0),
+  )
+}
+
+function normalizeComparison(value: unknown) {
+  const source = record(value)
+  if (!source) return value
+  return {
+    coreDifferences: list(first(source, ['coreDifferences', 'differences', 'keyDifferences', '核心差异', '差异'])),
+    risks: comparisonRisks(first(source, ['risks', 'riskNotes', 'warnings', '风险', '风险提示', '待核验'])),
+    priceNotes: list(first(source, ['priceNotes', 'priceAnalysis', 'prices', '价格', '价格分析'])),
+    usageNotes: list(first(source, ['usageNotes', 'scenarios', 'recommendations', 'usage', '使用场景', '建议'])),
+    unknowns: list(first(source, ['unknowns', 'missing', 'gaps', '待确认', '信息缺口', '未知项'])),
+  }
+}
+
 function price(value: unknown) {
   if (typeof value === 'number') return Math.max(0, value)
   const resolved = Number(text(value).replace(/[^\d.]/g, ''))
@@ -107,13 +143,15 @@ export const extractionSchema = z.preprocess(normalizeExtraction, canonicalExtra
 
 export type ExtractionResult = z.infer<typeof extractionSchema>
 
-export const comparisonSchema = z.object({
+const canonicalComparisonSchema = z.object({
   coreDifferences: z.array(z.string()).default([]),
   risks: z.record(z.array(z.string())).default({}),
   priceNotes: z.array(z.string()).default([]),
   usageNotes: z.array(z.string()).default([]),
   unknowns: z.array(z.string()).default([]),
 })
+
+export const comparisonSchema = z.preprocess(normalizeComparison, canonicalComparisonSchema)
 
 export type AIComparisonResult = z.infer<typeof comparisonSchema>
 
@@ -154,7 +192,7 @@ export const comparisonJsonSchema = {
   additionalProperties: false,
   properties: {
     coreDifferences: { type: 'array', items: { type: 'string' } },
-    risks: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } },
+    risks: { type: 'array', items: { type: 'string' } },
     priceNotes: { type: 'array', items: { type: 'string' } },
     usageNotes: { type: 'array', items: { type: 'string' } },
     unknowns: { type: 'array', items: { type: 'string' } },
